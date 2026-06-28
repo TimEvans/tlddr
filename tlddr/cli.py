@@ -11,13 +11,17 @@ def run_extract(source: Path, out: Path) -> list[ExtractedDoc]:
     extracted_dir = out / "extracted"
     asset_dir = out / "thumbnails"
     extracted_dir.mkdir(parents=True, exist_ok=True)
+    asset_dir.mkdir(parents=True, exist_ok=True)
     ctx = ExtractContext(asset_dir=asset_dir)
 
     files = sorted(p for p in source.rglob("*") if p.is_file())
     docs: list[ExtractedDoc] = []
     for path in files:
         doc = route(path, ctx)
-        (extracted_dir / f"{doc.id}.json").write_text(doc.model_dump_json(indent=2))
+        json_path = extracted_dir / f"{doc.id}.json"
+        if json_path.exists():
+            print(f"warning: id collision on '{doc.id}', overwriting {json_path}")
+        json_path.write_text(doc.model_dump_json(indent=2))
         docs.append(doc)
         print(f"extracted {doc.id} [{doc.signal_type.value}] ({len(doc.warnings)} warnings)")
 
