@@ -8,6 +8,6 @@ def test_kmz_extracts_identity(tmp_path, simple_kmz):
     doc = extract(simple_kmz, ctx)
     assert doc.signal_type is SignalType.GEOSPATIAL
     assert "Indicative REZ Boundaries 2025" in doc.content
-    assert "2" in doc.content  # two placemarks counted
+    assert "2 placemarks" in doc.content  # two placemarks counted, not satisfiable by the year in the name
     assert doc.pages[0].method is ExtractMethod.KMZ_IDENTITY
     assert doc.pages[0].has_text_layer is False
