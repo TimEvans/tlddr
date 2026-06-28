@@ -69,7 +69,8 @@ def understand_commit(enrichment_path: Path, extracted_dir: Path, out_dir: Path)
 
     questions_path = out_dir / "questions.json"
     existing = json.loads(questions_path.read_text()) if questions_path.exists() else []
-    existing.extend(json.loads(q.model_dump_json()) for q in questions)
+    existing = [q for q in existing if q.get("node_id") != node.id]  # replace this node's prior questions
+    existing.extend(q.model_dump(mode="json") for q in questions)
     questions_path.write_text(json.dumps(existing, indent=2))
 
     for d in dropped:

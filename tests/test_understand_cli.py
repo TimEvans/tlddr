@@ -47,3 +47,21 @@ def test_slice_then_commit_then_render(tmp_path):
     assert (vault / "_triage.md").exists()
     assert "[[a3]]" in (vault / "a6.md").read_text()
     assert "a6" in (vault / "_index.md").read_text()
+
+
+def test_commit_is_idempotent_on_questions(tmp_path):
+    extracted = tmp_path / "extracted"
+    extracted.mkdir()
+    _write_doc(extracted, "a6")
+    enrichment = {
+        "extracted_id": "a6", "doc_type": "cba", "description": "d",
+        "confidence_interpretation": "high", "related": [],
+        "questions": [{"id": "q-1", "question": "Which scenario?"}],
+    }
+    ep = tmp_path / "a6.enrichment.json"
+    ep.write_text(json.dumps(enrichment))
+    work = tmp_path / "work"
+    understand_commit(ep, extracted, work)
+    understand_commit(ep, extracted, work)  # re-commit the same node
+    questions = json.loads((work / "questions.json").read_text())
+    assert len(questions) == 1  # not duplicated on re-run
