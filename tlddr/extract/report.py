@@ -1,7 +1,12 @@
 from collections import Counter
 from tlddr.models import ExtractedDoc
 
-EXCERPT_CHARS = 800
+# The report is a human-readable preview; the full content always lives in the
+# per-doc JSON. We cap the excerpt (rather than removing it) because some
+# extracted content is very large (e.g. spreadsheet dumps run to megabytes), and
+# we flag when an excerpt was truncated so the report never looks deceptively
+# complete.
+EXCERPT_CHARS = 4000
 
 
 def render_report(docs: list[ExtractedDoc]) -> str:
@@ -40,6 +45,11 @@ def render_report(docs: list[ExtractedDoc]) -> str:
             lines.append("```")
             lines.append(excerpt)
             lines.append("```")
+            if len(d.content) > EXCERPT_CHARS:
+                lines.append(
+                    f"_excerpt truncated; full {len(d.content):,}-char content in "
+                    f"extracted/{d.id}.json_"
+                )
         lines.append("")
 
     return "\n".join(lines)
