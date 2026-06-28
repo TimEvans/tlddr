@@ -68,3 +68,41 @@ genuinely-conflicting document pair would exercise that path far better than mor
 - Spreadsheet comprehension is the main extraction follow-up if/when a section leans on the
   workbook.
 - docx embedded-image warnings are the hook for future image extraction from Word documents.
+
+## Fidelity audit (post-merge) and known limitations
+
+A follow-up audit compared the *full* extracted content (not the report excerpt) against
+ground truth: PDF pages rendered and read directly, docx cross-checked with python-docx.
+The original "signal is there" claim held for document *identity* but overstated *content
+completeness*. Findings, by format:
+
+- **PDF (born-digital prose): high fidelity (verified).** Rendered page 10 of the
+  cost-benefit appendix matched its extracted text exactly - prose, bullets, footnotes,
+  order. Density across the 13 PDFs is healthy (~1,500-3,100 chars per text page).
+- **KMZ: correct by design.** Identity only.
+
+### Fixed (quick wins)
+
+- **docx image bloat - FIXED.** mammoth was inlining embedded images as base64 data-URIs;
+  the business-case template was 96% base64 (583k of 607k chars), brolga was 3.7M chars
+  mostly base64. Images are now dropped and counted as provenance
+  ("N embedded image(s) present, not extracted (identity only)"). Real effect:
+  business-case 607k->23.6k, brolga 3.7M->47k, species 460k->21.6k.
+- **report excerpt - FIXED.** The 800-char excerpt made every doc look incomplete; raised
+  to 4,000 with an explicit truncation notice pointing at the full per-doc JSON.
+
+### Deferred - known limitations (revisit when a drafted section needs the content)
+
+- **docx table content is lossy.** The business-case template has 21 tables / 251 cells;
+  roughly a fifth are not reliably present in mammoth's markdown (confirmed genuinely
+  absent: "Penalty for non-compliance", "Internationalisation", "Stakeholder"). Tables
+  carry the data in due-diligence docs, so this matters. Likely fix: extract tables with
+  python-docx (already a dependency) rather than relying on mammoth's markdown tables -
+  a design change, not a one-liner. **Not yet done.**
+- **xlsx dump is bloated and truncated.** The ISP workbook extracted to ~19 MB of text,
+  mostly empty-cell pipe padding, and each sheet is capped at 200 rows (real data loss on
+  large sheets). Needs smarter per-sheet table/units detection and a purpose-driven row
+  policy. **Not yet done.**
+- **PDF table / multi-column pages unverified.** Only a prose page was visually checked;
+  pymupdf raw text can mis-order multi-column layouts or flatten tables. Spot-check pages
+  with tables (e.g. in the cost-benefit appendix) before relying on PDF table data.
