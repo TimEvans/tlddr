@@ -33,3 +33,7 @@ EXTRACTORS[".docx"] = _docx.extract
 from tlddr.extract import xlsx as _xlsx
 
 EXTRACTORS[".xlsx"] = _xlsx.extract
+
+from tlddr.extract import kmz as _kmz
+
+EXTRACTORS[".kmz"] = _kmz.extract
