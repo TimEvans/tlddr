@@ -31,3 +31,17 @@ def test_report_has_summary_and_detail():
 def test_report_handles_empty_list():
     md = render_report([])
     assert "0 documents" in md
+
+
+def test_report_marks_truncated_content_and_points_to_json():
+    d = _doc()
+    d.content = "A" * 6000  # longer than the excerpt cap
+    md = render_report([d])
+    assert "truncated" in md
+    assert "extracted/a6-cost-benefit-analysis.json" in md
+    assert "6,000" in md  # reports the full content size
+
+
+def test_report_does_not_mark_short_content_as_truncated():
+    md = render_report([_doc()])  # short content
+    assert "truncated" not in md
