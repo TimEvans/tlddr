@@ -40,3 +40,55 @@ class ExtractedDoc(BaseModel):
     pages: list[PageProvenance] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     extractor: str
+
+
+class Confidence(str, Enum):
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
+class Triage(str, Enum):
+    GREEN = "green"
+    AMBER = "amber"
+    RED = "red"
+
+
+class RelationType(str, Enum):
+    CONTRADICTS = "contradicts"
+    SUPERSEDES = "supersedes"
+    CORROBORATES = "corroborates"
+    REFERENCES = "references"
+    SAME_SUBJECT = "same_subject"
+    INPUT_TO = "input_to"
+
+
+class Edge(BaseModel):
+    target: str
+    relation: RelationType
+    rationale: str
+
+
+class Question(BaseModel):
+    id: str
+    raised_by: str
+    node_id: str | None = None
+    section_id: str | None = None
+    question: str
+    blocks: list[str] = Field(default_factory=list)
+    blocking: bool = False
+    answer: str | None = None
+
+
+class Node(BaseModel):
+    id: str
+    extracted_id: str
+    title: str
+    doc_type: str
+    description: str
+    report_sections: list[str] = Field(default_factory=list)
+    confidence_extraction: Confidence
+    confidence_interpretation: Confidence
+    triage: Triage
+    open_questions: list[str] = Field(default_factory=list)
+    related: list[Edge] = Field(default_factory=list)
