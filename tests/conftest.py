@@ -52,6 +52,23 @@ def simple_docx(tmp_path) -> Path:
 
 
 @pytest.fixture
+def docx_with_image(tmp_path) -> Path:
+    p = tmp_path / "with_image.docx"
+    png = tmp_path / "tiny.png"
+    pix = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 20, 20))
+    pix.set_rect(pix.irect, (200, 100, 50))
+    pix.save(png)
+    d = Document()
+    d.add_heading("Report", level=0)
+    d.add_paragraph("Real text body here.")
+    d.add_picture(str(png))
+    d.add_paragraph("More text after the image.")
+    d.add_picture(str(png))
+    d.save(p)
+    return p
+
+
+@pytest.fixture
 def simple_xlsx(tmp_path) -> Path:
     p = tmp_path / "data.xlsx"
     wb = Workbook()
