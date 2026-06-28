@@ -20,3 +20,8 @@ def route(path: Path, ctx: ExtractContext) -> ExtractedDoc:
             extractor="none",
         )
     return extractor(path, ctx)
+
+
+from tlddr.extract import pdf as _pdf
+
+EXTRACTORS[".pdf"] = _pdf.extract
