@@ -16,7 +16,6 @@ class SignalType(str, Enum):
 
 class ExtractMethod(str, Enum):
     PYMUPDF_TEXT = "pymupdf_text"
-    MAMMOTH_DOCX = "mammoth_docx"
     OPENPYXL_XLSX = "openpyxl_xlsx"
     KMZ_IDENTITY = "kmz_identity"
     VISION = "vision"

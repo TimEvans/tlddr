@@ -69,6 +69,22 @@ def docx_with_image(tmp_path) -> Path:
 
 
 @pytest.fixture
+def docx_with_table(tmp_path) -> Path:
+    p = tmp_path / "with_table.docx"
+    d = Document()
+    d.add_heading("Risk Assessment", level=0)
+    d.add_paragraph("Before the table.")
+    table = d.add_table(rows=2, cols=2)
+    table.cell(0, 0).text = "Risk"
+    table.cell(0, 1).text = "Mitigation"
+    table.cell(1, 0).text = "Flood"
+    table.cell(1, 1).text = "Levee upgrade"
+    d.add_paragraph("After the table.")
+    d.save(p)
+    return p
+
+
+@pytest.fixture
 def simple_xlsx(tmp_path) -> Path:
     p = tmp_path / "data.xlsx"
     wb = Workbook()
