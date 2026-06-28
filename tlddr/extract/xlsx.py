@@ -17,24 +17,26 @@ def extract(path: Path, ctx: ExtractContext) -> ExtractedDoc:
     pages: list[PageProvenance] = []
     warnings: list[str] = []
 
-    for index, ws in enumerate(wb.worksheets, start=1):
-        parts.append(f"--- sheet: {ws.title} ---")
-        rows = 0
-        for row in ws.iter_rows(values_only=True):
-            if rows >= MAX_ROWS:
-                warnings.append(f"sheet '{ws.title}' truncated at {MAX_ROWS} rows")
-                break
-            line = " | ".join(_cell(v) for v in row)
-            if line.strip(" |"):
-                parts.append(line)
-                rows += 1
-        if ws.merged_cells.ranges:
-            warnings.append(f"messy: sheet '{ws.title}' has merged cells")
-        pages.append(PageProvenance(
-            page=index, method=ExtractMethod.OPENPYXL_XLSX,
-            has_text_layer=True, char_count=0,
-        ))
-    wb.close()
+    try:
+        for index, ws in enumerate(wb.worksheets, start=1):
+            parts.append(f"--- sheet: {ws.title} ---")
+            rows = 0
+            for row in ws.iter_rows(values_only=True):
+                if rows >= MAX_ROWS:
+                    warnings.append(f"sheet '{ws.title}' truncated at {MAX_ROWS} rows")
+                    break
+                line = " | ".join(_cell(v) for v in row)
+                if line.strip(" |"):
+                    parts.append(line)
+                    rows += 1
+            if ws.merged_cells.ranges:
+                warnings.append(f"messy: sheet '{ws.title}' has merged cells")
+            pages.append(PageProvenance(
+                page=index, method=ExtractMethod.OPENPYXL_XLSX,
+                has_text_layer=True, char_count=0,
+            ))
+    finally:
+        wb.close()
 
     return ExtractedDoc(
         id=doc_id(path),
