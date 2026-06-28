@@ -242,7 +242,7 @@ Router classifies each file by signal type, then dispatches:
   the model adds semantic ones (especially `contradicts` / `supersedes`).
 - Script validates each edge `target` is in the node set, derives `triage`, writes
   nodes + links via the vault seam, emits Understand-stage quarantine questions, and
-  renders `_index.md`, `_triage.md`, and the per-doc question addenda.
+  renders `_index.md` and `_triage.md`.
 - Coverage readout (the repurposed TurboVault tools) flags isolated/dead-end docs.
 
 **DRAFT — model, per section, script-orchestrated.**
@@ -292,10 +292,11 @@ self-contained — written so it can be answered from the question alone, withou
 document — with an `> answer:` line filled inline. Reviewed in an editor or Obsidian; no
 bespoke UI. TurboVault coverage tools feed the amber/green entries.
 
-**Per-doc addendum.** Each doc node renders a read-only `## Open questions for review`
-section at the bottom of its body, so an engineer reading that document's note sees its open
-questions in context. It is a projection of the same records; the single place to *answer*
-is `_triage.md` (so resume parses one file).
+**Questions live only in `_triage.md`**, not rendered into the document notes themselves.
+`_triage.md` is the single surface to both read and answer them, so resume parses one file.
+A doc node's frontmatter still carries `open_questions: list[QuestionId]` as a machine-only
+back-reference (used by `_index.md` and resume), but the question *text* is never projected
+into the doc body.
 
 **Resume consumes answers.** A re-pass reads `_triage.md`, matches answers back to
 `Question.id`, and re-runs only the affected nodes/sections (`blocks` says what was held).
@@ -317,7 +318,7 @@ presented as a `tlddr` CLI so every stage is separately runnable and inspectable
 | Command | Owner | Does | Staged run |
 |---------|-------|------|------------|
 | `tlddr extract --source <dir> --vault <dir>` | script | Route by signal type -> extracted node stubs (identity, content, page provenance, thumbnails). Visual path calls the model seam. | Proving step 1 |
-| `tlddr understand --profile <p>` | model + script | Per node: describe, tag sections, set 2 confidences, propose edges. Script validates, writes vault, builds graph, renders `_index.md` / `_triage.md` / addenda. | understand-only stop |
+| `tlddr understand --profile <p>` | model + script | Per node: describe, tag sections, set 2 confidences, propose edges. Script validates, writes vault, builds graph, renders `_index.md` / `_triage.md`. | understand-only stop |
 | `tlddr triage status` | script | Print red/amber/green counts; review = read `_triage.md`. | review |
 | `tlddr draft --sections <ids\|all> --profile <p>` | model + script | Gather nodes per section -> draft against purpose/depth/example -> `DraftClaim`s with `(node_id, page)`. Empty/thin section -> finding. | single-section draft |
 | `tlddr resume` | script + model | Parse answered `_triage.md`, re-run only affected nodes/sections. | resume-after-quarantine |
