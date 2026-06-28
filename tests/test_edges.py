@@ -25,5 +25,6 @@ def test_drops_self_link():
 
 
 def test_dedupes_same_target_and_relation():
-    valid, _ = validate_edges([e("b"), e("b")], known_node_ids={"a", "b"}, source_id="a")
+    valid, dropped = validate_edges([e("b"), e("b")], known_node_ids={"a", "b"}, source_id="a")
     assert len(valid) == 1
+    assert dropped == []   # a duplicate is silently skipped, not reported as dropped

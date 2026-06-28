@@ -10,7 +10,7 @@ def validate_edges(proposed: list[Edge], known_node_ids: set[str],
         if edge.target == source_id or edge.target not in known_node_ids:
             dropped.append(edge)
             continue
-        key = (edge.target, edge.relation.value)
+        key = (edge.target, edge.relation)
         if key in seen:
             continue
         seen.add(key)
