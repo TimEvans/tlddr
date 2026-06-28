@@ -1,5 +1,6 @@
 from pathlib import Path
 from tlddr.cli import run_extract, main
+from tlddr.models import SignalType
 
 
 def test_run_extract_writes_json_and_report(tmp_path, born_digital_pdf, simple_docx, simple_kmz):
@@ -27,3 +28,23 @@ def test_main_extract_returns_zero(tmp_path, simple_docx):
     code = main(["extract", "--source", str(source), "--out", str(out)])
     assert code == 0
     assert (out / "extraction-report.md").exists()
+
+
+def test_run_extract_isolates_per_file_failure(tmp_path, simple_docx):
+    source = tmp_path / "src"
+    source.mkdir()
+    # one good file
+    (source / simple_docx.name).write_bytes(simple_docx.read_bytes())
+    # one malformed PDF (valid suffix, invalid content) - would raise in fitz.open
+    (source / "broken.pdf").write_bytes(b"%PDF-1.4 not actually a pdf")
+    out = tmp_path / "out"
+
+    docs = run_extract(source, out)
+
+    # run completed for BOTH files, report written despite the bad one
+    assert len(docs) == 2
+    assert (out / "extraction-report.md").exists()
+    broken = next(d for d in docs if d.source_path.endswith("broken.pdf"))
+    assert broken.extractor == "error"
+    assert broken.signal_type is SignalType.UNKNOWN
+    assert broken.warnings and "fail" in broken.warnings[0].lower()

@@ -4,7 +4,8 @@ from pathlib import Path
 from tlddr.extract.base import ExtractContext
 from tlddr.extract.router import route
 from tlddr.extract.report import render_report
-from tlddr.models import ExtractedDoc
+from tlddr.ids import doc_id, sha256_file
+from tlddr.models import ExtractedDoc, SignalType
 
 
 def run_extract(source: Path, out: Path) -> list[ExtractedDoc]:
@@ -17,7 +18,19 @@ def run_extract(source: Path, out: Path) -> list[ExtractedDoc]:
     files = sorted(p for p in source.rglob("*") if p.is_file())
     docs: list[ExtractedDoc] = []
     for path in files:
-        doc = route(path, ctx)
+        try:
+            doc = route(path, ctx)
+        except Exception as exc:
+            doc = ExtractedDoc(
+                id=doc_id(path),
+                source_path=str(path),
+                source_sha256=sha256_file(path) if path.exists() else "",
+                signal_type=SignalType.UNKNOWN,
+                raw_title=path.stem,
+                content="",
+                warnings=[f"extraction failed: {type(exc).__name__}: {exc}"],
+                extractor="error",
+            )
         json_path = extracted_dir / f"{doc.id}.json"
         if json_path.exists():
             print(f"warning: id collision on '{doc.id}', overwriting {json_path}")
