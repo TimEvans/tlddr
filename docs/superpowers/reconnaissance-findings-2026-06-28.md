@@ -91,14 +91,16 @@ completeness*. Findings, by format:
 - **report excerpt - FIXED.** The 800-char excerpt made every doc look incomplete; raised
   to 4,000 with an explicit truncation notice pointing at the full per-doc JSON.
 
+### Fixed (follow-up, after the audit)
+
+- **docx table content - FIXED.** mammoth was dropping table cells (business-case template:
+  196/251 cells = 78% coverage). Replaced mammoth with a python-docx in-order body walk that
+  renders paragraphs and tables in true document order, tables as markdown tables. Coverage
+  is now 251/251 (100%); mammoth dropped as a dependency. (The earlier "Stakeholder absent"
+  note was a false probe - the real text is lowercase "stakeholders" and was always present.)
+
 ### Deferred - known limitations (revisit when a drafted section needs the content)
 
-- **docx table content is lossy.** The business-case template has 21 tables / 251 cells;
-  roughly a fifth are not reliably present in mammoth's markdown (confirmed genuinely
-  absent: "Penalty for non-compliance", "Internationalisation", "Stakeholder"). Tables
-  carry the data in due-diligence docs, so this matters. Likely fix: extract tables with
-  python-docx (already a dependency) rather than relying on mammoth's markdown tables -
-  a design change, not a one-liner. **Not yet done.**
 - **xlsx dump is bloated and truncated.** The ISP workbook extracted to ~19 MB of text,
   mostly empty-cell pipe padding, and each sheet is capped at 200 rows (real data loss on
   large sheets). Needs smarter per-sheet table/units detection and a purpose-driven row

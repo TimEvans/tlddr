@@ -31,3 +31,19 @@ def test_docx_without_images_has_no_image_warning(tmp_path, simple_docx):
     ctx = ExtractContext(asset_dir=tmp_path / "assets")
     doc = extract(simple_docx, ctx)
     assert not [w for w in doc.warnings if "embedded image" in w]
+
+
+def test_docx_extracts_table_cells_in_document_order(tmp_path, docx_with_table):
+    ctx = ExtractContext(asset_dir=tmp_path / "assets")
+    doc = extract(docx_with_table, ctx)
+    # every table cell is captured (this is the content mammoth was dropping)
+    for cell in ("Risk", "Mitigation", "Flood", "Levee upgrade"):
+        assert cell in doc.content, f"missing table cell: {cell}"
+    # the table sits in its true position between the surrounding paragraphs
+    assert (
+        doc.content.index("Before the table")
+        < doc.content.index("Flood")
+        < doc.content.index("After the table")
+    )
+    # rendered as a markdown table
+    assert "| Risk | Mitigation |" in doc.content
