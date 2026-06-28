@@ -12,11 +12,11 @@ def route(path: Path, ctx: ExtractContext) -> ExtractedDoc:
         return ExtractedDoc(
             id=doc_id(path),
             source_path=str(path),
-            source_sha256=sha256_file(path),
+            source_sha256=sha256_file(path) if path.exists() else "",
             signal_type=SignalType.UNKNOWN,
             raw_title=path.stem,
             content="",
-            warnings=[f"no extractor for extension '{path.suffix}'"],
+            warnings=[f"no extractor for extension '{path.suffix.lower()}'"],
             extractor="none",
         )
     return extractor(path, ctx)
