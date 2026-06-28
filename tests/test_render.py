@@ -25,6 +25,21 @@ def test_triage_groups_by_colour_and_lists_questions():
                           question="Which pump is this curve for?")]
     md = render_triage(nodes, questions)
     assert "## Red" in md and "## Green" in md
+    assert "## Amber" in md   # empty groups are still emitted
     assert "[[a]]" in md
     assert "Which pump" in md
     assert "> answer:" in md
+
+
+def test_triage_marks_blocking_question_and_handles_no_questions():
+    nodes = [_node("a", Triage.RED)]
+    blocking_q = Question(id="q-b", raised_by="understand", node_id="a",
+                          question="Is this blocked?", blocking=True)
+    md = render_triage(nodes, [blocking_q])
+    # the blocking flag is shown
+    assert "[blocking]" in md
+    # the question heading (after the Open questions section) carries the node wikilink
+    questions_section = md.split("## Open questions")[1]
+    assert "[[a]]" in questions_section
+    # the no-questions case renders the fallback
+    assert "None." in render_triage(nodes, [])
