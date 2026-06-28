@@ -29,3 +29,7 @@ EXTRACTORS[".pdf"] = _pdf.extract
 from tlddr.extract import docx as _docx
 
 EXTRACTORS[".docx"] = _docx.extract
+
+from tlddr.extract import xlsx as _xlsx
+
+EXTRACTORS[".xlsx"] = _xlsx.extract
