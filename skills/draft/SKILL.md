@@ -131,7 +131,8 @@ Prints: total claims, support level breakdown (fully/partially/unsupported), evi
 tlddr assemble \
   --work .tlddr \
   --out report \
-  --sections .tlddr/sections.json
+  --sections .tlddr/sections.json \
+  --vault vault
 ```
 
 Writes `report/report.md` (the attributed draft, claims assembled under section headings) and `report/report_comments.md` (open findings and verify questions surfaced as inline comments). Also refreshes `vault/_triage.md` with all current questions (including draft and verify findings) so the D6 answer loop has an up-to-date answer surface. Share both report files with the user.

@@ -96,3 +96,22 @@ def test_assemble_writes_triage_md(tmp_path):
     assert (vault / "_triage.md").exists()
     triage_text = (vault / "_triage.md").read_text()
     assert "# Triage" in triage_text
+
+
+def test_draft_commit_is_idempotent_with_unknown_sections(tmp_path):
+    work, extracted, sections = _setup(tmp_path)
+    claims_file = tmp_path / "claims.json"
+    claims_file.write_text(json.dumps([{
+        "section_id": "s_unknown", "text": "Some claim.",
+        "support_level": "fully_supported", "evidence_relation": "quoted",
+        "sources": [{"node_id": "r518", "page": 12}],
+    }]))
+
+    main(["draft-commit", "--claims", str(claims_file), "--extracted", str(extracted),
+          "--work", str(work), "--sections", str(sections)])
+    main(["draft-commit", "--claims", str(claims_file), "--extracted", str(extracted),
+          "--work", str(work), "--sections", str(sections)])
+
+    qs = json.loads((work / "questions.json").read_text())
+    draft_qs = [q for q in qs if q.get("raised_by") == "draft" and q.get("section_id") == "s_unknown"]
+    assert len(draft_qs) == 1

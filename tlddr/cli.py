@@ -147,12 +147,12 @@ def draft_commit(claims_path: Path, extracted_dir: Path, work_dir: Path,
     known_section_ids = section_ids(load_sections(sections_path)) if sections_path else None
     valid, findings = validate_claims(raw, docs, nodes, known_section_ids)
 
-    committed_sections = {c.section_id for c in valid}
-    committed = [c for c in _load_claims(work_dir) if c.section_id not in committed_sections]
+    submitted_sections = {r["section_id"] for r in raw}
+    committed = [c for c in _load_claims(work_dir) if c.section_id not in submitted_sections]
     committed.extend(valid)
     (work_dir / "claims.json").write_text(
         json.dumps([c.model_dump(mode="json") for c in committed], indent=2))
-    for section in {c.section_id for c in valid}:
+    for section in submitted_sections:
         _append_questions(work_dir, [],
                           drop=lambda q, s=section: q.get("raised_by") == "draft" and q.get("section_id") == s)
     _append_questions(work_dir, findings)
