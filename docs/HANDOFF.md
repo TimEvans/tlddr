@@ -9,9 +9,9 @@ Point a fresh session at this file. It captures what tl-ddr is, what is built, e
 
 ## What tl-ddr is
 
-A proof-of-concept that drafts **Technical Due Diligence (TDD) reports** from a pile of client source documents. The AI reads the whole document vault and drafts the report against a template, shifting the engineer's job from "read everything and write from scratch" to "review, correct, sign off." Its defining posture: **flag what it is unsure about instead of guessing** — for due diligence, an honest gap beats confident fabrication.
+A proof-of-concept that drafts **Due Diligence reports** from a pile of client source documents. The AI reads the whole document vault and drafts the report against a template, shifting the engineer's job from "read everything and write from scratch" to "review, correct, sign off." Its defining posture: **flag what it is unsure about instead of guessing** — for due diligence, an honest gap beats confident fabrication.
 
-Name = TDD + tl;dr. The success bar: a senior engineer looks at the output and says "this genuinely saved me time, and I trust how it got there."
+In industry terms it is a **template-driven, attributed grounded-generation system built on agentic RAG** (claim-level attribution, agentic retrieval, faithfulness eval, abstention). The due-diligence report is one application; nothing in the machinery is specific to it. The name is retained from the project's origin (it is no longer scoped to *technical* due diligence). The success bar: a senior engineer looks at the output and says "this genuinely saved me time, and I trust how it got there."
 
 **The pipeline (four stages + a cross-cutting channel):**
 ```
@@ -132,7 +132,7 @@ This is where the vault becomes a report. **Brainstorm first** (per the superpow
 - **XLSX extraction** is bloated (empty-cell padding, ~19MB) and 200-row/sheet truncated — fix only when a drafted section needs the workbook (evidence-driven).
 - **PDF table/multi-column pages** unverified (only a prose page was visually checked).
 
-**Corpus caveat:** the 20 docs are thematically-related public energy/climate reports, not a single client's adversarial set. The `output_sections.md` (a real TDD structure) fits this corpus well, so section-tagging and the understanding map are genuinely demonstrable — but cross-document *contradiction* findings cannot be shown here. **No finished worked-example report exists yet:** the draft-vs-handwritten gap analysis (the core Draft evaluation signal) cannot fully run until one is provided. Draft can still produce a draft + sidecar to eyeball; the gold-comparison is what's gated.
+**Corpus caveat:** the 20 docs are thematically-related public energy/climate reports, not a single client's adversarial set. The `output_sections.md` (a real due-diligence report structure) fits this corpus well, so section-tagging and the understanding map are genuinely demonstrable — but cross-document *contradiction* findings cannot be shown here. **No finished worked-example report exists yet:** the draft-vs-handwritten gap analysis (the core Draft evaluation signal) cannot fully run until one is provided. Draft can still produce a draft + sidecar to eyeball; the gold-comparison is what's gated.
 
 ---
 

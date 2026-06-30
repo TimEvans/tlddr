@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-06-30
 
-Top-level package for tl-ddr (TDD report drafting POC). Holds the shared data contracts, id helpers, and the CLI. Stage code lives in `extract/` and `understand/` (each has its own index). Extract and Understand are both merged and proven; Draft is the next stage.
+Top-level package for tl-ddr — a **template-driven Due Diligence report generator**, i.e. a grounded/attributed report-generation system built on agentic RAG (the due-diligence report is one application; nothing here is specific to it). Holds the shared data contracts, id helpers, and the CLI. Stage code lives in `extract/` and `understand/` (each has its own index). Extract and Understand are both merged and proven; Draft is the next stage.
 
 ## Files Overview
 
