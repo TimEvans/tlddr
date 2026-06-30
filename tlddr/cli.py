@@ -6,9 +6,10 @@ from tlddr.extract.base import ExtractContext
 from tlddr.extract.router import route
 from tlddr.extract.report import render_report
 from tlddr.ids import doc_id, sha256_file
-from tlddr.models import ExtractedDoc, Node, Question, SignalType
+from tlddr.models import ExtractedDoc, Node, Question, SignalType, Section
 from tlddr.understand.slice import build_slice
 from tlddr.understand.commit import build_node
+from tlddr.understand.sections import load_sections, section_ids
 from tlddr.understand.node_render import render_node_markdown
 from tlddr.understand.render import render_index, render_triage
 
@@ -54,6 +55,14 @@ def _load_doc(extracted_dir: Path, node_id: str) -> ExtractedDoc:
 
 def understand_slice(extracted_dir: Path, node_id: str) -> str:
     return build_slice(_load_doc(extracted_dir, node_id))
+
+
+def understand_sections(sections_path: Path) -> list[Section]:
+    sections = load_sections(sections_path)
+    for s in sections:
+        prefix = "  " if s.parent else ""
+        print(f"{prefix}{s.id} — {s.title}")
+    return sections
 
 
 def understand_commit(enrichment_path: Path, extracted_dir: Path, out_dir: Path) -> Node:
@@ -106,6 +115,9 @@ def main(argv: list[str] | None = None) -> int:
     slice_cmd.add_argument("--extracted", required=True, type=Path)
     slice_cmd.add_argument("--id", required=True)
 
+    sections_cmd = sub.add_parser("sections", help="load, validate, and print the section structure")
+    sections_cmd.add_argument("--sections", required=True, type=Path)
+
     commit_cmd = sub.add_parser("understand-commit", help="assemble a validated node from agent enrichment")
     commit_cmd.add_argument("--enrichment", required=True, type=Path)
     commit_cmd.add_argument("--extracted", required=True, type=Path)
@@ -121,6 +133,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "understand-slice":
         print(understand_slice(args.extracted, args.id))
+        return 0
+    if args.command == "sections":
+        understand_sections(args.sections)
         return 0
     if args.command == "understand-commit":
         understand_commit(args.enrichment, args.extracted, args.out)

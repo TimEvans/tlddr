@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from tlddr.cli import understand_slice, understand_commit, understand_render
+from tlddr.cli import understand_slice, understand_commit, understand_render, understand_sections
 from tlddr.models import ExtractedDoc, SignalType
 
 
@@ -65,3 +65,17 @@ def test_commit_is_idempotent_on_questions(tmp_path):
     understand_commit(ep, extracted, work)  # re-commit the same node
     questions = json.loads((work / "questions.json").read_text())
     assert len(questions) == 1  # not duplicated on re-run
+
+
+def test_sections_command_prints_and_validates(tmp_path, capsys):
+    p = tmp_path / "sections.json"
+    p.write_text(json.dumps([
+        {"id": "key-technology", "title": "Key Technology"},
+        {"id": "key-technology-type-1", "title": "Technology type 1",
+         "parent": "key-technology"},
+    ]))
+    sections = understand_sections(p)
+    assert [s.id for s in sections] == ["key-technology", "key-technology-type-1"]
+    out = capsys.readouterr().out
+    assert "key-technology — Key Technology" in out
+    assert "  key-technology-type-1 — Technology type 1" in out  # indented child
