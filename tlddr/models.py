@@ -69,6 +69,12 @@ class Edge(BaseModel):
     rationale: str
 
 
+class Section(BaseModel):
+    id: str
+    title: str
+    parent: str | None = None
+
+
 class Question(BaseModel):
     id: str
     raised_by: str

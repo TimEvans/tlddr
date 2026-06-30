@@ -3,16 +3,22 @@ from tlddr.models import (
 )
 from tlddr.understand.confidence import extraction_confidence
 from tlddr.understand.edges import validate_edges
+from tlddr.understand.sections import validate_section_tags
 from tlddr.understand.triage import derive_triage
 
 
 def build_node(enrichment: dict, doc: ExtractedDoc,
-               known_node_ids: set[str]) -> tuple[Node, list[Edge], list[Question]]:
+               known_node_ids: set[str],
+               known_section_ids: frozenset[str] | set[str] = frozenset(),
+               ) -> tuple[Node, list[Edge], list[str], list[Question]]:
     proposed = [
         Edge(target=r["target"], relation=RelationType(r["relation"]), rationale=r["rationale"])
         for r in enrichment.get("related", [])
     ]
-    valid, dropped = validate_edges(proposed, known_node_ids, source_id=doc.id)
+    valid_edges, dropped_edges = validate_edges(proposed, known_node_ids, source_id=doc.id)
+
+    valid_sections, dropped_sections = validate_section_tags(
+        enrichment.get("report_sections", []), set(known_section_ids))
 
     questions = [
         Question(
@@ -33,10 +39,11 @@ def build_node(enrichment: dict, doc: ExtractedDoc,
         title=doc.raw_title,
         doc_type=enrichment["doc_type"],
         description=enrichment["description"],
+        report_sections=valid_sections,
         confidence_extraction=ext_conf,
         confidence_interpretation=interp_conf,
         triage=triage,
         open_questions=[q.id for q in questions],
-        related=valid,
+        related=valid_edges,
     )
-    return node, dropped, questions
+    return node, dropped_edges, dropped_sections, questions
