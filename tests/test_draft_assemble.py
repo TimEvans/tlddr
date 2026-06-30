@@ -1,18 +1,12 @@
 from tlddr.draft.assemble import render_published, render_sidecar
 from tlddr.models import (
-    Section, DraftClaim, Citation, Question, Node, SupportLevel, EvidenceRelation,
-    Confidence, Triage,
+    Section, DraftClaim, Citation, Question, SupportLevel, EvidenceRelation,
+    Confidence,
 )
 
 
 def _sections():
     return [Section(id="s1", title="Overview"), Section(id="s2", title="Gaps")]
-
-
-def _node(id="r518", interp=Confidence.HIGH):
-    return Node(id=id, extracted_id=id, title="R518 Report", doc_type="report", description="d",
-                confidence_extraction=Confidence.HIGH, confidence_interpretation=interp,
-                triage=Triage.GREEN)
 
 
 def _claims():
@@ -36,10 +30,9 @@ def test_published_is_clean_prose_by_section():
 
 
 def test_sidecar_lists_provenance_warnings_inferences_and_no_evidence():
-    nodes = {"r518": _node(), "r304": _node(id="r304", interp=Confidence.LOW)}
     questions = [Question(id="q1", raised_by="verify", section_id="s1",
                           question="judge downgrade on claim 1")]
-    out = render_sidecar(_sections(), _claims(), questions, nodes)
+    out = render_sidecar(_sections(), _claims(), questions)
     assert "## Overview" in out
     assert "[[r518]]" in out and "[[r304]]" in out                  # provenance
     assert "r304" in out and "inference" in out.lower()             # inference surfaced

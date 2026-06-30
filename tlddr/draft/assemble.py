@@ -1,5 +1,5 @@
 from tlddr.models import (
-    DraftClaim, Section, Question, Node, SupportLevel, EvidenceRelation, Confidence,
+    DraftClaim, Section, Question, SupportLevel, EvidenceRelation, Confidence,
 )
 from tlddr.draft.eval import no_evidence_sections
 
@@ -21,7 +21,7 @@ def render_published(sections: list[Section], claims: list[DraftClaim]) -> str:
 
 
 def render_sidecar(sections: list[Section], claims: list[DraftClaim],
-                   questions: list[Question], nodes: dict[str, Node]) -> str:
+                   questions: list[Question]) -> str:
     no_evidence = {s.id for s in no_evidence_sections(claims, sections)}
     lines: list[str] = ["# Reviewer comments", ""]
     for s in sections:
