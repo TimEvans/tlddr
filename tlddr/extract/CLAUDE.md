@@ -1,6 +1,6 @@
 # tlddr/extract - Module Index
 
-**Last Updated:** 2026-06-29
+**Last Updated:** 2026-07-01
 
 The extraction seam (stage 1, merged). Routes each source file by signal type to a format extractor; every extractor emits the same `ExtractedDoc`. No model calls (image-only pages are flagged for vision, not described). Content here is the faithful store the rest of the pipeline reads.
 
@@ -17,7 +17,7 @@ The extraction seam (stage 1, merged). Routes each source file by signal type to
 **Purpose:** Dispatch a file to the right extractor by lowercased suffix.
 **Key Functions:**
 - `route(path, ctx) -> ExtractedDoc` - unknown suffix returns an UNKNOWN doc with a warning (never raises)
-**Key Exports:** `EXTRACTORS: dict[str, Extractor]` (populated by each extractor module)
+**Key Exports:** `EXTRACTORS: dict[str, Extractor]` (populated by each extractor module; covers `.pdf`, `.docx`, `.xlsx`, `.kmz`, `.htm`, `.html`)
 
 ### pdf.py
 **Purpose:** PDF extractor (pymupdf). Per-page text-layer probe; image-only pages get a thumbnail + VISION flag.
@@ -27,8 +27,18 @@ The extraction seam (stage 1, merged). Routes each source file by signal type to
 
 ### docx.py
 **Purpose:** DOCX extractor (python-docx, in-order body walk). Renders paragraphs AND tables (as markdown tables) in document order; embedded images counted as provenance, not inlined. (Replaced mammoth, which dropped table cells.)
-**Key Functions:** `extract(path, ctx) -> ExtractedDoc`; helpers `_iter_block_items`, `_paragraph_markdown`, `_table_markdown`, `_clean_cell`
-**Dependencies:** docx (python-docx)
+**Key Functions:** `extract(path, ctx) -> ExtractedDoc`; helpers `_iter_block_items`, `_paragraph_markdown`
+**Dependencies:** docx (python-docx), tlddr.extract.tables (reuses `clean_cell` and `table_markdown`)
+
+### html.py
+**Purpose:** HTML/iXBRL extractor (BeautifulSoup + lxml). Strips script/style + hidden ix:header, unwraps inline ix:* tags, renders block text + markdown tables in document order, synthesizes page provenance from page-break-after boundaries.
+**Key Functions:** `extract(path, ctx) -> ExtractedDoc`; helpers `_tokens`, `_is_page_break`, `_has_block_child`, `_table_rows`, `_strip_ixbrl`, `_title`
+**Constants:** `BLOCK_TAGS`
+**Dependencies:** bs4 (BeautifulSoup, lxml backend), tlddr.extract.tables
+
+### tables.py
+**Purpose:** Shared markdown-table rendering for the docx and html extractors.
+**Key Functions:** `clean_cell(text) -> str`, `table_markdown(rows) -> str`
 
 ### xlsx.py
 **Purpose:** XLSX extractor (openpyxl). Sheet dump with merged-cell + row-cap warnings.
