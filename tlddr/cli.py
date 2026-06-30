@@ -96,18 +96,20 @@ def understand_commit(enrichment_path: Path, extracted_dir: Path, out_dir: Path,
     return node
 
 
-def understand_render(work_dir: Path, vault_dir: Path) -> None:
+def understand_render(work_dir: Path, vault_dir: Path,
+                      sections_path: Path | None = None) -> None:
     nodes = [Node.model_validate_json(p.read_text())
              for p in sorted((work_dir / "nodes").glob("*.json"))]
     questions_path = work_dir / "questions.json"
     questions = ([Question.model_validate(q) for q in json.loads(questions_path.read_text())]
                  if questions_path.exists() else [])
+    sections = load_sections(sections_path) if sections_path else None
 
     vault_dir.mkdir(parents=True, exist_ok=True)
     for node in nodes:
         (vault_dir / f"{node.id}.md").write_text(render_node_markdown(node))
     (vault_dir / "_index.md").write_text(render_index(nodes))
-    (vault_dir / "_triage.md").write_text(render_triage(nodes, questions))
+    (vault_dir / "_triage.md").write_text(render_triage(nodes, questions, sections))
     print(f"rendered {len(nodes)} nodes to {vault_dir}")
 
 
@@ -135,6 +137,7 @@ def main(argv: list[str] | None = None) -> int:
     render_cmd = sub.add_parser("understand-render", help="render the vault, index, and triage")
     render_cmd.add_argument("--work", default=Path(".tlddr"), type=Path)
     render_cmd.add_argument("--vault", default=Path("vault"), type=Path)
+    render_cmd.add_argument("--sections", type=Path, default=None)
 
     args = parser.parse_args(argv)
     if args.command == "extract":
@@ -150,7 +153,7 @@ def main(argv: list[str] | None = None) -> int:
         understand_commit(args.enrichment, args.extracted, args.out, args.sections)
         return 0
     if args.command == "understand-render":
-        understand_render(args.work, args.vault)
+        understand_render(args.work, args.vault, args.sections)
         return 0
     return 1
 

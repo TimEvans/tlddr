@@ -103,3 +103,32 @@ def test_sections_command_prints_and_validates(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "key-technology — Key Technology" in out
     assert "  key-technology-type-1 — Technology type 1" in out  # indented child
+
+
+def test_render_writes_section_coverage(tmp_path):
+    extracted = tmp_path / "extracted"
+    extracted.mkdir()
+    _write_doc(extracted, "a6")
+
+    sections = tmp_path / "sections.json"
+    sections.write_text(json.dumps([
+        {"id": "financial-model", "title": "Financial Model"},
+        {"id": "energy-yield", "title": "Independent Energy Yield Assessment Summary"},
+    ]))
+
+    enrichment = {
+        "extracted_id": "a6", "doc_type": "cba", "description": "d",
+        "confidence_interpretation": "high", "related": [],
+        "report_sections": ["financial-model"], "questions": [],
+    }
+    ep = tmp_path / "a6.enrichment.json"
+    ep.write_text(json.dumps(enrichment))
+    work = tmp_path / "work"
+    understand_commit(ep, extracted, work, sections)
+
+    vault = tmp_path / "vault"
+    understand_render(work, vault, sections)
+    triage = (vault / "_triage.md").read_text()
+    assert "## Section coverage" in triage
+    assert "Financial Model" in triage and "[[a6]]" in triage
+    assert "no evidence" in triage.lower()   # energy-yield has none
