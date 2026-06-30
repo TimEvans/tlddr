@@ -78,6 +78,7 @@ No single "next stage" remains. The work now is hardening, broadening, and the d
    3. Draft the remaining 4 sections (key-technology + its type-1/type-2 children, operation-maintenance) for a complete report, then re-run end-to-end.
 
 **B. Broaden to a new corpus.** Prep one of the new sibling filings (Chevron 10-K / CONSOL S-4 / Microsoft 10-K) through the full pipeline (`extract` → `understand` skill → `generate-sections` → `draft`). Proves cross-domain generalization (financial filings vs energy/engineering). Each needs its own work dirs — there is no "active vault"; you select by paths (e.g. `extract --source "docs/test-reports/Chevron 10-K filing" --out .tlddr/chevron`, then `--work .tlddr/chevron --vault vault/chevron`). A small `--profile <name>` deriving all paths from one name is the clean addition if juggling corpora becomes routine.
+   - **BLOCKER — build an HTML extractor first.** The SEC filings are HTML-native, not PDF: the Chevron folder is 159 `.htm` + 24 `.jpg` + a little xml/txt, and the current router only handles `.pdf`/`.docx`/`.xlsx`/`.kmz` — so `extract` would route every file to `UNKNOWN`. Direction B's real first task is a new `tlddr/extract/html.py` extractor (`.htm`/`.html` → text + structure + page/section provenance; a stdlib/`beautifulsoup`-style parse) wired into `router.py`'s `EXTRACTORS`. The `.jpg` exhibits would want the deferred vision path. Treat the HTML extractor as its own brainstorm → plan → build slice before any understand/draft on a filing.
 
 **C. Strengthen verification — build C-full.** The deferred robustness layer: ensemble the C-lite LLM-judge with a *local* deterministic NLI classifier (Vectara HHEM / AutoAIS) so faithfulness is independently machine-verified, not single-LLM-judged (FaithBench shows a lone judge is weak on hard cases). Adds `torch`/`transformers` — the only place new heavyweight deps enter.
 
@@ -109,7 +110,8 @@ No single "next stage" remains. The work now is hardening, broadening, and the d
 - **House-style docx/PDF output** — `assemble` emits markdown only.
 - **Gold-comparison eval** — gated on a finished worked-example report.
 - **KMZ/identity citability** + **`no_evidence` semantics** — the two proving-run tooling findings (direction A).
-- **Vision path** (describe image-only pages) — not built; first real job is the single ISP cover thumbnail. **Contradiction-detection edges**, **content digest in nodes** — deferred. **XLSX extraction** bloated (~19 MB) + 200-row/sheet truncated — evidence-driven fix. **PDF table/multi-column** pages unverified.
+- **HTML extractor** — not built; the current router handles only `.pdf`/`.docx`/`.xlsx`/`.kmz`. Required before any SEC-filing corpus (Chevron/CONSOL/Microsoft are `.htm`-native). See direction B.
+- **Vision path** (describe image-only pages) — not built; first real job is the single ISP cover thumbnail (and the 24 Chevron `.jpg` exhibits). **Contradiction-detection edges**, **content digest in nodes** — deferred. **XLSX extraction** bloated (~19 MB) + 200-row/sheet truncated — evidence-driven fix. **PDF table/multi-column** pages unverified.
 - **Corpus caveat:** the engineering corpus is thematically-related public reports, not one client's project set, so per-section drafts read coherently but do not compose one project's report, and cross-document *contradiction* findings between sources can't be staged. The new filings (Chevron/CONSOL/Microsoft) are single-entity and may exercise this better.
 
 ---
