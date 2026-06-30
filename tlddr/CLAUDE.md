@@ -2,12 +2,12 @@
 
 **Last Updated:** 2026-06-30
 
-Top-level package for tl-ddr — a **template-driven Due Diligence report generator**, i.e. a grounded/attributed report-generation system built on agentic RAG (the due-diligence report is one application; nothing here is specific to it). Holds the shared data contracts, id helpers, and the CLI. Stage code lives in `extract/` and `understand/` (each has its own index). Extract and Understand are both merged and proven; Draft is the next stage.
+Top-level package for tl-ddr — a **template-driven Due Diligence report generator**, i.e. a grounded/attributed report-generation system built on agentic RAG (the due-diligence report is one application; nothing here is specific to it). Holds the shared data contracts, id helpers, and the CLI. Stage code lives in `extract/`, `understand/`, and `draft/` (each has its own index). Extract and Understand are both merged and proven; Draft is in progress.
 
 ## Files Overview
 
 ### models.py
-**Purpose:** All shared pydantic contracts. The `ExtractedDoc` (from extraction) and `Node` (from understanding) are the two central records.
+**Purpose:** All shared pydantic contracts. The `ExtractedDoc` (from extraction), `Node` (from understanding), and `DraftClaim` (from drafting) are the three central records.
 **Key Classes/Types:**
 - `SignalType(str, Enum)` - routing signal (born_digital_report, slide_deck, table_page, drawing, spreadsheet, image, geospatial, mixed, unknown)
 - `ExtractMethod(str, Enum)` - per-page extraction method (pymupdf_text, openpyxl_xlsx, kmz_identity, vision, ocr)
@@ -16,7 +16,11 @@ Top-level package for tl-ddr — a **template-driven Due Diligence report genera
 - `Confidence(str, Enum)` - HIGH/MEDIUM/LOW; `Triage(str, Enum)` - GREEN/AMBER/RED
 - `RelationType(str, Enum)` - contradicts/supersedes/corroborates/references/same_subject/input_to
 - `Edge` - target, relation, rationale (cross-doc edge)
-- `Section` - id, title, parent (one entry of the user-provided section-spec / sections.json)
+- `Section` - id, title, parent, guidance (one entry of the user-provided section-spec / sections.json; guidance is drafting instruction)
+- `SupportLevel(str, Enum)` - fully_supported/partially_supported/unsupported (drafter two-axis judgment)
+- `EvidenceRelation(str, Enum)` - quoted/inferred (claim sourcing mode)
+- `Citation` - node_id, page, source_confidence (one source of a DraftClaim)
+- `DraftClaim` - section_id, text, sources[], support_level, evidence_relation (one atomic claim in the draft)
 - `Question` - quarantine item (id, raised_by, node_id, section_id, question, blocks, blocking, answer)
 - `Node` - understanding overlay + `extracted_id` pointer (NO content clone); carries report_sections + the two confidences + triage + related edges
 **Dependencies:** enum, pydantic
@@ -28,16 +32,21 @@ Top-level package for tl-ddr — a **template-driven Due Diligence report genera
 - `sha256_file(path) -> str` - hex digest of file bytes (chunked)
 
 ### cli.py
-**Purpose:** The `tlddr` CLI. Extract-side + understand-side commands; deterministic glue only (no model calls).
+**Purpose:** The `tlddr` CLI. Extract-side + understand-side + draft-side commands; deterministic glue only (no model calls).
 **Key Functions:**
 - `run_extract(source, out) -> list[ExtractedDoc]` - walk source, route each file, write JSON + extraction-report.md
 - `understand_slice(extracted_dir, node_id) -> str` - bounded slice for one doc (agent reads this)
 - `understand_sections(sections_path) -> list[Section]` - load, validate, and print the canonical section structure (children indented)
 - `understand_commit(enrichment_path, extracted_dir, out_dir, sections_path=None) -> Node` - validate agent enrichment (edges + section tags) into a node; idempotent per-node questions
 - `understand_render(work_dir, vault_dir, sections_path=None)` - write vault/<id>.md + _index.md + _triage.md (incl. section coverage + isolated docs)
-- `main(argv)` - argparse entry; subcommands: extract, understand-slice, sections, understand-commit, understand-render
+- `draft_read(extracted_dir, node_id, pages=None) -> str` - bounded read (whole doc or requested pages, or page list)
+- `draft_commit(claims_path, extracted_dir, work_dir, sections_path=None) -> list[DraftClaim]` - validate agent claims into a claims queue (cites resolved + confidence looked up; zero-citation -> finding)
+- `draft_verify_commit(verdicts_path, work_dir) -> None` - ingest C-lite judge verdicts; downgrades/contradictions -> verify questions
+- `draft_eval(work_dir, sections_path) -> None` - print tier-B groundedness readout
+- `assemble(work_dir, out_dir, sections_path) -> None` - render report.md (clean) + report_comments.md (sidecar: provenance, warnings, inferences, open questions)
+- `main(argv)` - argparse entry; subcommands: extract, understand-slice, sections, understand-commit, understand-render, draft-read, draft-commit, draft-verify-commit, draft-eval, assemble
 **Key Exports:** console script `tlddr` (pyproject `[project.scripts]`)
-**Dependencies:** argparse, tlddr.extract, tlddr.understand, tlddr.models
+**Dependencies:** argparse, tlddr.extract, tlddr.understand, tlddr.draft, tlddr.models
 
 ### __init__.py
 **Purpose:** Empty package marker.
