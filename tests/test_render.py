@@ -1,5 +1,7 @@
-from tlddr.understand.render import render_index, render_triage
-from tlddr.models import Node, Question, Confidence, Triage
+from tlddr.understand.render import (
+    render_index, render_triage, section_coverage, isolated_nodes,
+)
+from tlddr.models import Node, Question, Confidence, Triage, Section, Edge, RelationType
 
 
 def _node(id, triage):
@@ -8,6 +10,16 @@ def _node(id, triage):
         description="d", confidence_extraction=Confidence.HIGH,
         confidence_interpretation=Confidence.HIGH if triage is Triage.GREEN else Confidence.MEDIUM,
         triage=triage,
+    )
+
+
+def _node_tagged(id, triage, sections=(), related=()):
+    return Node(
+        id=id, extracted_id=id, title=id.upper(), doc_type="report",
+        description="d", report_sections=list(sections),
+        confidence_extraction=Confidence.HIGH,
+        confidence_interpretation=Confidence.HIGH if triage is Triage.GREEN else Confidence.MEDIUM,
+        triage=triage, related=list(related),
     )
 
 
@@ -43,3 +55,32 @@ def test_triage_marks_blocking_question_and_handles_no_questions():
     assert "[[a]]" in questions_section
     # the no-questions case renders the fallback
     assert "None." in render_triage(nodes, [])
+
+
+def test_section_coverage_maps_sections_to_nodes():
+    sections = [Section(id="fin", title="Financial Model"),
+                Section(id="oem", title="Operation and Maintenance")]
+    nodes = [_node_tagged("a", Triage.GREEN, sections=["fin"]),
+             _node_tagged("b", Triage.GREEN, sections=["fin"])]
+    cov = section_coverage(nodes, sections)
+    assert cov == {"fin": ["a", "b"], "oem": []}
+
+
+def test_isolated_nodes_finds_unconnected():
+    edge = Edge(target="b", relation=RelationType.CORROBORATES, rationale="x")
+    nodes = [_node_tagged("a", Triage.GREEN, related=[edge]),   # -> b
+             _node_tagged("b", Triage.GREEN),                    # target of a
+             _node_tagged("c", Triage.GREEN)]                    # isolated
+    assert isolated_nodes(nodes) == ["c"]
+
+
+def test_triage_renders_section_coverage_and_no_evidence():
+    sections = [Section(id="fin", title="Financial Model"),
+                Section(id="oem", title="Operation and Maintenance")]
+    nodes = [_node_tagged("a", Triage.GREEN, sections=["fin"])]
+    md = render_triage(nodes, [], sections)
+    assert "## Section coverage" in md
+    assert "Financial Model" in md and "[[a]]" in md
+    assert "Operation and Maintenance" in md and "no evidence" in md.lower()
+    # Open questions stays the final section
+    assert md.index("## Section coverage") < md.index("## Open questions")
