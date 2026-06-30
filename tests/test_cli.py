@@ -1,4 +1,3 @@
-import re
 from pathlib import Path
 from tlddr.cli import run_extract, main, _is_sec_boilerplate
 from tlddr.models import SignalType
@@ -68,6 +67,13 @@ def test_is_sec_boilerplate_matches_machine_generated_artifacts():
 def test_is_sec_boilerplate_keeps_real_content():
     for name in ("cvx-20251231.htm", "a12312025ex19.htm", "report.pdf", "notes.docx"):
         assert not _is_sec_boilerplate(Path("/x") / name), name
+
+
+def test_is_sec_boilerplate_keeps_non_xbrl_zip():
+    from tlddr.cli import _is_sec_boilerplate
+    from pathlib import Path
+    assert not _is_sec_boilerplate(Path("/x/supplemental-data.zip"))
+    assert _is_sec_boilerplate(Path("/x/0000093410-26-000078-xbrl.zip"))
 
 
 def test_run_extract_skips_boilerplate(tmp_path):

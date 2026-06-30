@@ -35,7 +35,7 @@ _BOILERPLATE_PATTERNS = (
     re.compile(r"^FilingSummary\.xml$", re.IGNORECASE),
     re.compile(r"_(cal|def|lab|pre)\.xml$", re.IGNORECASE),
     re.compile(r"\.xsd$", re.IGNORECASE),
-    re.compile(r"\.zip$", re.IGNORECASE),
+    re.compile(r"-xbrl\.zip$", re.IGNORECASE),
 )
 
 
