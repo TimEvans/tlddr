@@ -84,3 +84,4 @@ def test_triage_renders_section_coverage_and_no_evidence():
     assert "Operation and Maintenance" in md and "no evidence" in md.lower()
     # Open questions stays the final section
     assert md.index("## Section coverage") < md.index("## Open questions")
+    assert md.index("## Isolated documents") < md.index("## Open questions")

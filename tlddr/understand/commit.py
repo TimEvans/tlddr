@@ -9,7 +9,7 @@ from tlddr.understand.triage import derive_triage
 
 def build_node(enrichment: dict, doc: ExtractedDoc,
                known_node_ids: set[str],
-               known_section_ids: set[str] = frozenset(),
+               known_section_ids: frozenset[str] | set[str] = frozenset(),
                ) -> tuple[Node, list[Edge], list[str], list[Question]]:
     proposed = [
         Edge(target=r["target"], relation=RelationType(r["relation"]), rationale=r["rationale"])

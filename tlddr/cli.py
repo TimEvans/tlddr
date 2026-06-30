@@ -89,7 +89,7 @@ def understand_commit(enrichment_path: Path, extracted_dir: Path, out_dir: Path,
     for d in dropped_edges:
         print(f"dropped edge {node.id} -> {d.target} ({d.relation.value}): target not in node set")
     for t in dropped_sections:
-        print(f"dropped section tag {node.id} -> {t}: not in sections.json")
+        print(f"dropped section tag {node.id} -> {t}: not a known section id")
     print(f"committed {node.id} [{node.triage.value}] "
           f"({len(node.related)} edges, {len(node.report_sections)} sections, "
           f"{len(questions)} questions)")

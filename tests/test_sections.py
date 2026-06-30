@@ -39,7 +39,7 @@ def test_load_sections_rejects_unknown_parent(tmp_path):
         load_sections(p)
 
 
-def test_section_ids_returns_the_id_set(tmp_path):
+def test_section_ids_returns_the_id_set():
     sections = [Section(id="a", title="A"), Section(id="b", title="B")]
     assert section_ids(sections) == {"a", "b"}
 
