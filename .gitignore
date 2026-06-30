@@ -4,7 +4,8 @@ __pycache__/
 .pytest_cache/
 .tlddr/
 vault/
-/docs/test-reports/Engineering reports test
+report/
+/docs/test-reports/
 /.timekeeper
 
 # Brainstorm visual-companion scratch
