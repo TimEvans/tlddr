@@ -8,6 +8,7 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 
 from tlddr.extract.base import ExtractContext
+from tlddr.extract.tables import table_markdown as _render_table
 from tlddr.ids import doc_id, sha256_file
 from tlddr.models import ExtractedDoc, SignalType
 
@@ -42,21 +43,9 @@ def _paragraph_markdown(paragraph: Paragraph) -> str:
     return text
 
 
-def _clean_cell(text: str) -> str:
-    # Keep each table row on one line and avoid breaking the markdown table.
-    return text.replace("|", "\\|").replace("\n", " ").strip()
-
-
 def _table_markdown(table: Table) -> str:
-    rows = [[_clean_cell(cell.text) for cell in row.cells] for row in table.rows]
-    if not rows:
-        return ""
-    width = len(rows[0])
-    lines = ["| " + " | ".join(rows[0]) + " |"]
-    lines.append("| " + " | ".join(["---"] * width) + " |")
-    for row in rows[1:]:
-        lines.append("| " + " | ".join(row) + " |")
-    return "\n".join(lines)
+    rows = [[cell.text for cell in row.cells] for row in table.rows]
+    return _render_table(rows)
 
 
 def extract(path: Path, ctx: ExtractContext) -> ExtractedDoc:
