@@ -199,6 +199,17 @@ Notes:
 - `Question.raised_by` is a free `str` today, so adding `"verify"` needs no model change — only
   documentation and producer code.
 
+**Page-addressing across signal types (decision A).** The `(node_id, page)` unit is not uniform
+across extractors: PDF has integer pages (`--- page N ---` markers); XLSX uses the sheet index
+as the page (`--- sheet: <name> ---` markers); DOCX has *no* page provenance (`pages=[]`). So a
+node's citable page set is `{p.page for p in doc.pages}` when pages exist, and the single
+synthetic page `1` (the whole document) for page-less docs — `citable_pages(doc) = {p.page for p
+in doc.pages} or {1}`. Both `draft-read` (serving a page's text) and citation validation route
+through two helpers: `citable_pages(doc) -> set[int]` and `page_text(doc, page) -> str | None`,
+which centralize the per-signal-type marker logic. This gives true page precision wherever the
+extractor provides it and document-level grounding for DOCX; finer DOCX pagination is a
+documented follow-up.
+
 ---
 
 ## Stage flow (per section, script-orchestrated)
