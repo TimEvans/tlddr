@@ -23,7 +23,7 @@ Before starting any phase:
 
 1. **Extracted store** — `.tlddr/extracted/*.json` must exist. If missing, run:
    ```
-   tlddr extract <source-dir> --out .tlddr
+   tlddr extract --source <source-dir> --out .tlddr
    ```
 
 2. **Curated sections** — `.tlddr/sections.json` must exist. If missing, run the `generate-sections` skill to build it.
