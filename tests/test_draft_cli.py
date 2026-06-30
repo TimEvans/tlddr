@@ -53,3 +53,46 @@ def test_draft_read_prints_page(tmp_path, capsys):
     assert main(["draft-read", "--extracted", str(extracted), "--id", "r518",
                  "--pages", "12"]) == 0
     assert "design life 25 years" in capsys.readouterr().out
+
+
+def _commit_claims(tmp_path, work, extracted, sections):
+    claims_file = tmp_path / "claims.json"
+    claims_file.write_text(json.dumps([{
+        "section_id": "s1", "text": "Design life is 25 years.",
+        "support_level": "fully_supported", "evidence_relation": "quoted",
+        "sources": [{"node_id": "r518", "page": 12}],
+    }]))
+    main(["draft-commit", "--claims", str(claims_file), "--extracted", str(extracted),
+          "--work", str(work), "--sections", str(sections)])
+    return claims_file
+
+
+def test_draft_verify_commit_is_idempotent(tmp_path):
+    work, extracted, sections = _setup(tmp_path)
+    _commit_claims(tmp_path, work, extracted, sections)
+
+    verdicts_file = tmp_path / "verdicts.json"
+    verdicts_file.write_text(json.dumps([{
+        "index": 0, "support_level": "unsupported", "contradiction": False,
+        "note": "not actually stated",
+    }]))
+
+    main(["draft-verify-commit", "--verdicts", str(verdicts_file), "--work", str(work)])
+    main(["draft-verify-commit", "--verdicts", str(verdicts_file), "--work", str(work)])
+
+    qs = json.loads((work / "questions.json").read_text())
+    verify_qs = [q for q in qs if q.get("raised_by") == "verify"]
+    assert len(verify_qs) == 1
+
+
+def test_assemble_writes_triage_md(tmp_path):
+    work, extracted, sections = _setup(tmp_path)
+    _commit_claims(tmp_path, work, extracted, sections)
+
+    vault = tmp_path / "vault"
+    out = tmp_path / "out"
+    assert main(["assemble", "--work", str(work), "--out", str(out),
+                 "--sections", str(sections), "--vault", str(vault)]) == 0
+    assert (vault / "_triage.md").exists()
+    triage_text = (vault / "_triage.md").read_text()
+    assert "# Triage" in triage_text

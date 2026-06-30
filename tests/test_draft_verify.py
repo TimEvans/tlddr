@@ -33,3 +33,27 @@ def test_contradiction_flag_always_raises():
                  "note": "conflicts with r304"}]
     qs = ingest_verdicts(verdicts, claims)
     assert len(qs) == 1 and qs[0].raised_by == "verify"
+
+
+def test_out_of_range_index_is_skipped():
+    claims = [_claim()]
+    verdicts = [{"index": 99, "support_level": "unsupported", "contradiction": False, "note": ""}]
+    assert ingest_verdicts(verdicts, claims) == []
+
+
+def test_missing_index_is_skipped():
+    claims = [_claim()]
+    verdicts = [{"support_level": "unsupported", "contradiction": False, "note": ""}]
+    assert ingest_verdicts(verdicts, claims) == []
+
+
+def test_invalid_support_level_is_skipped():
+    claims = [_claim()]
+    verdicts = [{"index": 0, "support_level": "bogus_value", "contradiction": False, "note": ""}]
+    assert ingest_verdicts(verdicts, claims) == []
+
+
+def test_missing_support_level_is_skipped():
+    claims = [_claim()]
+    verdicts = [{"index": 0, "contradiction": False, "note": ""}]
+    assert ingest_verdicts(verdicts, claims) == []

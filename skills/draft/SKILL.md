@@ -14,8 +14,8 @@ Per-run procedure for the Draft stage of tl-ddr. The host agent drafts each sect
 The CLI owns persistence and quality gates:
 
 - **Agent supplies:** claim text, `support_level`, `evidence_relation`, and `sources` (node_id + page pairs it actually read).
-- **CLI validates and drops:** unresolvable citations (unknown node_id or page not in the doc's page index), and turns zero-citation claims into findings.
-- **Corollary:** if a claim is silently absent from the committed store, the CLI dropped it — either the node_id does not exist or the page is not in the extracted record. Check ids and page numbers.
+- **CLI validates and drops:** unresolvable citations (unknown node_id or page not in the doc's page index), and turns zero-citation claims into findings. Claims tagged to a section id that does not exist in `sections.json` are also dropped with a finding (mirroring how Understand drops unknown section tags).
+- **Corollary:** if a claim is silently absent from the committed store, the CLI dropped it — either the node_id does not exist, the page is not in the extracted record, or the section_id is not a known section. Check ids, page numbers, and section ids.
 
 ## Prerequisites
 
@@ -105,10 +105,11 @@ Each file must be a JSON array, even if it contains a single claim. All claims i
 tlddr draft-commit \
   --claims .tlddr/draft-<section_id>.json \
   --extracted .tlddr/extracted \
-  --work .tlddr
+  --work .tlddr \
+  --sections .tlddr/sections.json
 ```
 
-The CLI validates each claim's citations, drops those that cannot be resolved, turns zero-citation claims into findings, and writes the valid claims to the committed store. The commit is section-scoped: re-committing for the same section replaces all prior claims for that section cleanly.
+The CLI validates each claim's citations, drops those that cannot be resolved, turns zero-citation claims into findings, and writes the valid claims to the committed store. Claims tagged to an unknown section id are dropped with a finding. The commit is section-scoped: re-committing for the same section replaces all prior claims for that section cleanly.
 
 After each commit, delete or overwrite the temporary file before drafting the next section.
 
@@ -133,7 +134,7 @@ tlddr assemble \
   --sections .tlddr/sections.json
 ```
 
-Writes `report/report.md` (the attributed draft, claims assembled under section headings) and `report/report_comments.md` (open findings and verify questions surfaced as inline comments). Share both files with the user.
+Writes `report/report.md` (the attributed draft, claims assembled under section headings) and `report/report_comments.md` (open findings and verify questions surfaced as inline comments). Also refreshes `vault/_triage.md` with all current questions (including draft and verify findings) so the D6 answer loop has an up-to-date answer surface. Share both report files with the user.
 
 ## Proving Gate
 

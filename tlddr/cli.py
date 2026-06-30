@@ -1,6 +1,7 @@
 import argparse
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from tlddr.extract.base import ExtractContext
 from tlddr.extract.router import route
@@ -123,12 +124,12 @@ def _load_claims(work_dir: Path) -> list[DraftClaim]:
     return [DraftClaim.model_validate(c) for c in json.loads(path.read_text())] if path.exists() else []
 
 
-def _append_questions(work_dir: Path, new: list, drop_section: str | None = None) -> None:
+def _append_questions(work_dir: Path, new: list,
+                      drop: Callable[[dict], bool] | None = None) -> None:
     path = work_dir / "questions.json"
     existing = json.loads(path.read_text()) if path.exists() else []
-    if drop_section is not None:
-        existing = [q for q in existing if not
-                    (q.get("raised_by") == "draft" and q.get("section_id") == drop_section)]
+    if drop is not None:
+        existing = [q for q in existing if not drop(q)]
     existing.extend(q.model_dump(mode="json") for q in new)
     path.write_text(json.dumps(existing, indent=2))
 
@@ -143,7 +144,8 @@ def draft_commit(claims_path: Path, extracted_dir: Path, work_dir: Path,
     docs = {p.stem: _load_doc(extracted_dir, p.stem) for p in extracted_dir.glob("*.json")}
     nodes = {n.id: n for n in (Node.model_validate_json(p.read_text())
                                for p in (work_dir / "nodes").glob("*.json"))}
-    valid, findings = validate_claims(raw, docs, nodes)
+    known_section_ids = section_ids(load_sections(sections_path)) if sections_path else None
+    valid, findings = validate_claims(raw, docs, nodes, known_section_ids)
 
     committed_sections = {c.section_id for c in valid}
     committed = [c for c in _load_claims(work_dir) if c.section_id not in committed_sections]
@@ -151,7 +153,8 @@ def draft_commit(claims_path: Path, extracted_dir: Path, work_dir: Path,
     (work_dir / "claims.json").write_text(
         json.dumps([c.model_dump(mode="json") for c in committed], indent=2))
     for section in {c.section_id for c in valid}:
-        _append_questions(work_dir, [], drop_section=section)
+        _append_questions(work_dir, [],
+                          drop=lambda q, s=section: q.get("raised_by") == "draft" and q.get("section_id") == s)
     _append_questions(work_dir, findings)
     print(f"committed {len(valid)} claims, {len(findings)} findings")
     return valid
@@ -160,7 +163,7 @@ def draft_commit(claims_path: Path, extracted_dir: Path, work_dir: Path,
 def draft_verify_commit(verdicts_path: Path, work_dir: Path) -> None:
     verdicts = json.loads(verdicts_path.read_text())
     questions = ingest_verdicts(verdicts, _load_claims(work_dir))
-    _append_questions(work_dir, questions)
+    _append_questions(work_dir, questions, drop=lambda q: q.get("raised_by") == "verify")
     print(f"raised {len(questions)} verify questions")
 
 
@@ -168,7 +171,8 @@ def draft_eval(work_dir: Path, sections_path: Path) -> None:
     print(groundedness_readout(_load_claims(work_dir), load_sections(sections_path)))
 
 
-def assemble(work_dir: Path, out_dir: Path, sections_path: Path) -> None:
+def assemble(work_dir: Path, out_dir: Path, sections_path: Path,
+             vault_dir: Path = Path("vault")) -> None:
     claims = _load_claims(work_dir)
     sections = load_sections(sections_path)
     questions_path = work_dir / "questions.json"
@@ -177,6 +181,10 @@ def assemble(work_dir: Path, out_dir: Path, sections_path: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "report.md").write_text(render_published(sections, claims))
     (out_dir / "report_comments.md").write_text(render_sidecar(sections, claims, questions))
+    nodes = [Node.model_validate_json(p.read_text())
+             for p in sorted((work_dir / "nodes").glob("*.json"))]
+    vault_dir.mkdir(parents=True, exist_ok=True)
+    (vault_dir / "_triage.md").write_text(render_triage(nodes, questions, sections))
     print(f"assembled {len(claims)} claims into report.md + report_comments.md")
 
 
@@ -229,6 +237,7 @@ def main(argv: list[str] | None = None) -> int:
     asm.add_argument("--work", default=Path(".tlddr"), type=Path)
     asm.add_argument("--out", default=Path("report"), type=Path)
     asm.add_argument("--sections", required=True, type=Path)
+    asm.add_argument("--vault", default=Path("vault"), type=Path)
 
     args = parser.parse_args(argv)
     if args.command == "extract":
@@ -260,7 +269,7 @@ def main(argv: list[str] | None = None) -> int:
         draft_eval(args.work, args.sections)
         return 0
     if args.command == "assemble":
-        assemble(args.work, args.out, args.sections)
+        assemble(args.work, args.out, args.sections, args.vault)
         return 0
     return 1
 

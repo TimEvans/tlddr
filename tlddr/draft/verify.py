@@ -7,8 +7,14 @@ _RANK = {SupportLevel.UNSUPPORTED: 0, SupportLevel.PARTIALLY_SUPPORTED: 1,
 def ingest_verdicts(verdicts: list[dict], claims: list[DraftClaim]) -> list[Question]:
     questions: list[Question] = []
     for v in verdicts:
-        claim = claims[v["index"]]
-        judged = SupportLevel(v["support_level"])
+        index = v.get("index")
+        if not isinstance(index, int) or index < 0 or index >= len(claims):
+            continue
+        try:
+            judged = SupportLevel(v["support_level"])
+        except (KeyError, ValueError):
+            continue
+        claim = claims[index]
         downgrade = _RANK[judged] < _RANK[claim.support_level]
         if not (downgrade or v.get("contradiction")):
             continue
@@ -16,7 +22,7 @@ def ingest_verdicts(verdicts: list[dict], claims: list[DraftClaim]) -> list[Ques
             f"judge:{judged.value} < drafter:{claim.support_level.value}"
         note = (v.get("note") or "").strip()
         questions.append(Question(
-            id=f"verify-{v['index']}", raised_by="verify", node_id=None,
+            id=f"verify-{index}", raised_by="verify", node_id=None,
             section_id=claim.section_id,
             question=f"[{reason}] '{claim.text[:80]}' — {note}".rstrip(" -"),
         ))

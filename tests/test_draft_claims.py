@@ -57,3 +57,32 @@ def test_partially_valid_claim_keeps_only_resolvable_citations():
     claims, findings = validate_claims([raw], docs={"r518": _doc()}, nodes={"r518": _node()})
     assert findings == []
     assert [(c.node_id, c.page) for c in claims[0].sources] == [("r518", 12)]
+
+
+def test_unknown_section_claim_dropped_with_finding():
+    raw = _raw(section="ghost")
+    claims, findings = validate_claims(
+        [raw], docs={"r518": _doc()}, nodes={"r518": _node()},
+        known_section_ids={"s1"})
+    assert claims == []
+    assert len(findings) == 1
+    assert findings[0].raised_by == "draft"
+    assert findings[0].section_id == "ghost"
+
+
+def test_known_section_passes_through_unchanged():
+    raw = _raw(section="s1")
+    claims, findings = validate_claims(
+        [raw], docs={"r518": _doc()}, nodes={"r518": _node()},
+        known_section_ids={"s1"})
+    assert findings == []
+    assert len(claims) == 1
+
+
+def test_no_known_section_ids_skips_section_validation():
+    # Existing callers omit known_section_ids; ghost sections must not be dropped
+    raw = _raw(section="ghost")
+    claims, findings = validate_claims(
+        [raw], docs={"r518": _doc()}, nodes={"r518": _node()})
+    assert len(claims) == 1
+    assert findings == []
