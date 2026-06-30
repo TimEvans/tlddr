@@ -23,6 +23,16 @@ def _has_block_child(tag: Tag) -> bool:
     )
 
 
+def _is_page_break(tag: Tag) -> bool:
+    style = (tag.get("style") or "").replace(" ", "").lower()
+    for prop in ("page-break-after:", "break-after:"):
+        if prop in style:
+            value = style.split(prop, 1)[1].split(";", 1)[0]
+            if value not in ("avoid", "auto", ""):
+                return True
+    return False
+
+
 def _table_rows(table: Tag) -> list[list[str]]:
     rows = []
     for tr in table.find_all("tr"):
@@ -32,7 +42,7 @@ def _table_rows(table: Tag) -> list[list[str]]:
 
 
 def _tokens(node):
-    """Yield ('text', s) and ('table', markdown) in document order."""
+    """Yield ('text', s), ('table', markdown), and ('break', '') in document order."""
     for child in node.children:
         if isinstance(child, NavigableString):
             text = str(child).strip()
@@ -46,13 +56,19 @@ def _tokens(node):
             markdown = table_markdown(_table_rows(child))
             if markdown:
                 yield ("table", markdown)
+            if _is_page_break(child):
+                yield ("break", "")
             continue
         if name in BLOCK_TAGS and _has_block_child(child):
             yield from _tokens(child)
+            if _is_page_break(child):
+                yield ("break", "")
             continue
         text = child.get_text(" ", strip=True)
         if text:
             yield ("text", text)
+        if _is_page_break(child):
+            yield ("break", "")
 
 
 def _strip_ixbrl(soup: BeautifulSoup) -> None:
@@ -79,8 +95,19 @@ def extract(path: Path, ctx: ExtractContext) -> ExtractedDoc:
     raw_title = _title(soup, path)
     body = soup.body or soup
 
-    parts = [value for _, value in _tokens(body)]
-    page_texts = ["\n\n".join(parts).strip()] if any(parts) else []
+    page_texts: list[str] = []
+    current: list[str] = []
+    for kind, value in _tokens(body):
+        if kind == "break":
+            text = "\n\n".join(current).strip()
+            if text:
+                page_texts.append(text)
+            current = []
+        else:
+            current.append(value)
+    text = "\n\n".join(current).strip()
+    if text:
+        page_texts.append(text)
 
     warnings: list[str] = []
     image_count = len(body.find_all("img"))

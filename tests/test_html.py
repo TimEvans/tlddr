@@ -82,3 +82,43 @@ def test_embedded_images_counted_as_warning(tmp_path):
                   ExtractContext(asset_dir=tmp_path / "a"))
     image_warnings = [w for w in doc.warnings if "embedded image" in w]
     assert image_warnings and "2" in image_warnings[0]
+
+
+def test_page_break_after_splits_into_pages(tmp_path):
+    html = (
+        "<html><body>"
+        '<div style="page-break-after:always">Page one body</div>'
+        '<div style="page-break-after:always">Page two body</div>'
+        "<div>Page three body</div>"
+        "</body></html>"
+    )
+    doc = extract(_write(tmp_path, "p.htm", html), ExtractContext(asset_dir=tmp_path / "a"))
+    assert len(doc.pages) == 3
+    assert [p.page for p in doc.pages] == [1, 2, 3]
+    assert "--- page 1 ---\nPage one body" in doc.content
+    assert "--- page 2 ---\nPage two body" in doc.content
+    assert "--- page 3 ---\nPage three body" in doc.content
+    assert doc.pages[0].char_count == len("Page one body")
+
+
+def test_page_break_avoid_does_not_split(tmp_path):
+    html = (
+        "<html><body>"
+        '<div style="page-break-after:avoid">Stays together one</div>'
+        "<div>Stays together two</div>"
+        "</body></html>"
+    )
+    doc = extract(_write(tmp_path, "av.htm", html), ExtractContext(asset_dir=tmp_path / "a"))
+    assert len(doc.pages) == 1
+
+
+def test_trailing_content_after_last_break_is_its_own_page(tmp_path):
+    html = (
+        "<html><body>"
+        '<div style="page-break-after:always">First</div>'
+        "<p>Trailing</p>"
+        "</body></html>"
+    )
+    doc = extract(_write(tmp_path, "tr.htm", html), ExtractContext(asset_dir=tmp_path / "a"))
+    assert len(doc.pages) == 2
+    assert "--- page 2 ---\nTrailing" in doc.content
