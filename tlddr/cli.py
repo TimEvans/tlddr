@@ -65,12 +65,16 @@ def understand_sections(sections_path: Path) -> list[Section]:
     return sections
 
 
-def understand_commit(enrichment_path: Path, extracted_dir: Path, out_dir: Path) -> Node:
+def understand_commit(enrichment_path: Path, extracted_dir: Path, out_dir: Path,
+                      sections_path: Path | None = None) -> Node:
     enrichment = json.loads(enrichment_path.read_text())
     doc = _load_doc(extracted_dir, enrichment["extracted_id"])
     known_ids = {p.stem for p in extracted_dir.glob("*.json")}
+    known_section_ids = (section_ids(load_sections(sections_path))
+                         if sections_path else frozenset())
 
-    node, dropped, _dropped_sections, questions = build_node(enrichment, doc, known_ids)
+    node, dropped_edges, dropped_sections, questions = build_node(
+        enrichment, doc, known_ids, known_section_ids)
 
     nodes_dir = out_dir / "nodes"
     nodes_dir.mkdir(parents=True, exist_ok=True)
@@ -82,9 +86,13 @@ def understand_commit(enrichment_path: Path, extracted_dir: Path, out_dir: Path)
     existing.extend(q.model_dump(mode="json") for q in questions)
     questions_path.write_text(json.dumps(existing, indent=2))
 
-    for d in dropped:
+    for d in dropped_edges:
         print(f"dropped edge {node.id} -> {d.target} ({d.relation.value}): target not in node set")
-    print(f"committed {node.id} [{node.triage.value}] ({len(node.related)} edges, {len(questions)} questions)")
+    for t in dropped_sections:
+        print(f"dropped section tag {node.id} -> {t}: not in sections.json")
+    print(f"committed {node.id} [{node.triage.value}] "
+          f"({len(node.related)} edges, {len(node.report_sections)} sections, "
+          f"{len(questions)} questions)")
     return node
 
 
@@ -122,6 +130,7 @@ def main(argv: list[str] | None = None) -> int:
     commit_cmd.add_argument("--enrichment", required=True, type=Path)
     commit_cmd.add_argument("--extracted", required=True, type=Path)
     commit_cmd.add_argument("--out", default=Path(".tlddr"), type=Path)
+    commit_cmd.add_argument("--sections", type=Path, default=None)
 
     render_cmd = sub.add_parser("understand-render", help="render the vault, index, and triage")
     render_cmd.add_argument("--work", default=Path(".tlddr"), type=Path)
@@ -138,7 +147,7 @@ def main(argv: list[str] | None = None) -> int:
         understand_sections(args.sections)
         return 0
     if args.command == "understand-commit":
-        understand_commit(args.enrichment, args.extracted, args.out)
+        understand_commit(args.enrichment, args.extracted, args.out, args.sections)
         return 0
     if args.command == "understand-render":
         understand_render(args.work, args.vault)
