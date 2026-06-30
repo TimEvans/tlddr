@@ -1,0 +1,48 @@
+from tlddr.draft.assemble import render_published, render_sidecar
+from tlddr.models import (
+    Section, DraftClaim, Citation, Question, Node, SupportLevel, EvidenceRelation,
+    Confidence, Triage,
+)
+
+
+def _sections():
+    return [Section(id="s1", title="Overview"), Section(id="s2", title="Gaps")]
+
+
+def _node(id="r518", interp=Confidence.HIGH):
+    return Node(id=id, extracted_id=id, title="R518 Report", doc_type="report", description="d",
+                confidence_extraction=Confidence.HIGH, confidence_interpretation=interp,
+                triage=Triage.GREEN)
+
+
+def _claims():
+    return [
+        DraftClaim(section_id="s1", text="Design life is 25 years.",
+                   sources=[Citation(node_id="r518", page=12, source_confidence=Confidence.HIGH)],
+                   support_level=SupportLevel.FULLY_SUPPORTED,
+                   evidence_relation=EvidenceRelation.QUOTED),
+        DraftClaim(section_id="s1", text="Implies mid-life inverter swap.",
+                   sources=[Citation(node_id="r304", page=3, source_confidence=Confidence.LOW)],
+                   support_level=SupportLevel.PARTIALLY_SUPPORTED,
+                   evidence_relation=EvidenceRelation.INFERRED),
+    ]
+
+
+def test_published_is_clean_prose_by_section():
+    out = render_published(_sections(), _claims())
+    assert "## Overview" in out
+    assert "Design life is 25 years. Implies mid-life inverter swap." in out
+    assert "r518" not in out and "fully_supported" not in out      # no provenance leaks into draft
+
+
+def test_sidecar_lists_provenance_warnings_inferences_and_no_evidence():
+    nodes = {"r518": _node(), "r304": _node(id="r304", interp=Confidence.LOW)}
+    questions = [Question(id="q1", raised_by="verify", section_id="s1",
+                          question="judge downgrade on claim 1")]
+    out = render_sidecar(_sections(), _claims(), questions, nodes)
+    assert "## Overview" in out
+    assert "[[r518]]" in out and "[[r304]]" in out                  # provenance
+    assert "r304" in out and "inference" in out.lower()             # inference surfaced
+    assert "low" in out.lower()                                     # low-confidence warning
+    assert "judge downgrade on claim 1" in out                      # open question
+    assert "Gaps" in out and "insufficient evidence" in out.lower() # s2 no-evidence
