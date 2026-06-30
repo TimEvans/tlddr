@@ -73,6 +73,32 @@ class Section(BaseModel):
     id: str
     title: str
     parent: str | None = None
+    guidance: str | None = None
+
+
+class SupportLevel(str, Enum):
+    FULLY_SUPPORTED = "fully_supported"
+    PARTIALLY_SUPPORTED = "partially_supported"
+    UNSUPPORTED = "unsupported"
+
+
+class EvidenceRelation(str, Enum):
+    QUOTED = "quoted"
+    INFERRED = "inferred"
+
+
+class Citation(BaseModel):
+    node_id: str
+    page: int
+    source_confidence: Confidence | None = None
+
+
+class DraftClaim(BaseModel):
+    section_id: str
+    text: str
+    sources: list[Citation] = Field(default_factory=list)
+    support_level: SupportLevel
+    evidence_relation: EvidenceRelation
 
 
 class Question(BaseModel):

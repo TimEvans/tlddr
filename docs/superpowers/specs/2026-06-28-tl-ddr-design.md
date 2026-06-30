@@ -4,11 +4,18 @@
 **Date:** 2026-06-28
 **Type:** proof-of-concept
 
-`tl-ddr` is TDD (Technical Due Diligence) plus tl;dr. It reads a pile of a client's
-source documents and drafts a structured due-diligence report against a template, so the
+`tl-ddr` is a **template-driven Due Diligence report generator**. It reads a pile of a
+client's source documents and drafts a structured report against a template, so the
 engineer's job shifts from "read everything and write from scratch" to "review, correct,
 sign off." Crucially, it **flags what it is unsure about instead of guessing** — for due
 diligence, an honest gap is worth more than confident coverage.
+
+In industry terms it is a **grounded, attributed report-generation system built on agentic
+RAG** (retrieval-augmented generation): claim-level attribution (AIS/ALCE), agentic
+retrieval (Self-RAG), faithfulness evaluation (RAGAS), and abstention. The due-diligence
+report is one application — nothing in the machinery is specific to it; the same pipeline
+grounds any template-driven report in a source corpus with page-level citations. (The name
+is retained from the project's origin; it is no longer scoped to *technical* due diligence.)
 
 This is a POC. The bar is: a senior engineer looks at the output and says *"this genuinely
 saved me time, and I trust how it got there."*
@@ -377,7 +384,8 @@ one figure/drawing-leaning); then wire polished assembly last.
 - **No finished worked-example report yet.** The draft-vs-handwritten gap analysis — the
   core evaluation signal — cannot run until it is provided. Does not block steps 1–2; gates
   proving-step-3 evaluation. Until then the report profile is derived from
-  `Business-Case-Template-v11.docx` as a stand-in (acknowledged not to be a true TDD report).
+  `Business-Case-Template-v11.docx` as a stand-in (acknowledged not to be a true
+  due-diligence report).
 - **TurboVault activates on next session reload** (MCP cannot hot-load). Steps 1–2 do not
   need it live; the vault-write stage does.
 - **The test corpus is thematic, not adversarial.** It is a grab-bag of public energy /
