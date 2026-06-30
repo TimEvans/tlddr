@@ -70,7 +70,7 @@ def understand_commit(enrichment_path: Path, extracted_dir: Path, out_dir: Path)
     doc = _load_doc(extracted_dir, enrichment["extracted_id"])
     known_ids = {p.stem for p in extracted_dir.glob("*.json")}
 
-    node, dropped, questions = build_node(enrichment, doc, known_ids)
+    node, dropped, _dropped_sections, questions = build_node(enrichment, doc, known_ids)
 
     nodes_dir = out_dir / "nodes"
     nodes_dir.mkdir(parents=True, exist_ok=True)
