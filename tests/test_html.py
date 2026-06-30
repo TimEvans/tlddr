@@ -122,3 +122,117 @@ def test_trailing_content_after_last_break_is_its_own_page(tmp_path):
     doc = extract(_write(tmp_path, "tr.htm", html), ExtractContext(asset_dir=tmp_path / "a"))
     assert len(doc.pages) == 2
     assert "--- page 2 ---\nTrailing" in doc.content
+
+
+# ---------------------------------------------------------------------------
+# Fix 1: nested-table garbling in _table_rows
+# ---------------------------------------------------------------------------
+
+def test_nested_table_does_not_create_phantom_rows_or_ragged_columns(tmp_path):
+    """Outer 1-row 2-col table whose 2nd cell contains a nested table.
+
+    Expected: outer table renders as exactly header+separator+1 data row (3 pipe
+    lines), separator has exactly 2 columns, and the inner table's text simply
+    flattens into the parent cell via get_text.
+    """
+    html = (
+        "<html><body>"
+        "<table>"
+        "<tr>"
+        "<td>Col1</td>"
+        "<td><table><tr><td>Inner1</td><td>Inner2</td></tr></table></td>"
+        "</tr>"
+        "</table>"
+        "</body></html>"
+    )
+    doc = extract(_write(tmp_path, "nested.htm", html), ExtractContext(asset_dir=tmp_path / "a"))
+    table_lines = [line for line in doc.content.split("\n") if line.startswith("|")]
+    # 1 outer row renders as header + separator = 2 pipe lines.
+    # The buggy code produces 3 (phantom inner row leaks as an extra data row).
+    assert len(table_lines) == 2, (
+        f"expected header+separator only (2 pipe lines, no phantom row), got {len(table_lines)}: "
+        + repr(table_lines)
+    )
+    assert "| --- | --- |" in doc.content, "separator should show exactly 2 columns"
+    assert "| --- | --- | --- |" not in doc.content, (
+        "separator must not have 3+ columns (ragged column count)"
+    )
+
+
+def test_simple_non_nested_table_still_renders_correctly(tmp_path):
+    """Regression: the existing simple-table test must stay green after the fix."""
+    html = (
+        "<html><body>"
+        "<table>"
+        "<tr><td>Risk</td><td>Mitigation</td></tr>"
+        "<tr><td>Flood</td><td>Levee</td></tr>"
+        "</table>"
+        "</body></html>"
+    )
+    doc = extract(_write(tmp_path, "simple.htm", html), ExtractContext(asset_dir=tmp_path / "a"))
+    assert "| Risk | Mitigation |" in doc.content
+    assert "| Flood | Levee |" in doc.content
+
+
+# ---------------------------------------------------------------------------
+# Fix 2: _is_page_break false positives on `none` and `column-break-after`
+# ---------------------------------------------------------------------------
+
+def test_break_after_always_splits_pages(tmp_path):
+    """CSS3 break-after:always must split into two pages (coverage regression)."""
+    html = (
+        "<html><body>"
+        '<div style="break-after:always">CSS3 page one</div>'
+        "<div>CSS3 page two</div>"
+        "</body></html>"
+    )
+    doc = extract(_write(tmp_path, "ba.htm", html), ExtractContext(asset_dir=tmp_path / "a"))
+    assert len(doc.pages) == 2, f"expected 2 pages, got {len(doc.pages)}"
+
+
+def test_break_after_auto_does_not_split(tmp_path):
+    """break-after:auto must not produce a page split."""
+    html = (
+        "<html><body>"
+        '<div style="break-after:auto">Part one</div>'
+        "<div>Part two</div>"
+        "</body></html>"
+    )
+    doc = extract(_write(tmp_path, "baauto.htm", html), ExtractContext(asset_dir=tmp_path / "a"))
+    assert len(doc.pages) == 1, f"expected 1 page, got {len(doc.pages)}"
+
+
+def test_page_break_after_none_does_not_split(tmp_path):
+    """page-break-after:none must not produce a page split (false-positive bug)."""
+    html = (
+        "<html><body>"
+        '<div style="page-break-after:none">No break here</div>'
+        "<div>Still on same page</div>"
+        "</body></html>"
+    )
+    doc = extract(_write(tmp_path, "pbnone.htm", html), ExtractContext(asset_dir=tmp_path / "a"))
+    assert len(doc.pages) == 1, f"expected 1 page, got {len(doc.pages)}"
+
+
+def test_column_break_after_always_does_not_split_pages(tmp_path):
+    """column-break-after:always must not trigger a page split (substring-match bug)."""
+    html = (
+        "<html><body>"
+        '<div style="column-break-after:always">Column break only</div>'
+        "<div>Next column content</div>"
+        "</body></html>"
+    )
+    doc = extract(_write(tmp_path, "colba.htm", html), ExtractContext(asset_dir=tmp_path / "a"))
+    assert len(doc.pages) == 1, f"expected 1 page, got {len(doc.pages)}"
+
+
+def test_webkit_column_break_after_always_does_not_split_pages(tmp_path):
+    """-webkit-column-break-after:always must not trigger a page split."""
+    html = (
+        "<html><body>"
+        '<div style="-webkit-column-break-after:always">Webkit col break</div>'
+        "<div>Next section</div>"
+        "</body></html>"
+    )
+    doc = extract(_write(tmp_path, "wkcolba.htm", html), ExtractContext(asset_dir=tmp_path / "a"))
+    assert len(doc.pages) == 1, f"expected 1 page, got {len(doc.pages)}"

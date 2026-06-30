@@ -26,9 +26,10 @@ def _has_block_child(tag: Tag) -> bool:
 def _is_page_break(tag: Tag) -> bool:
     style = (tag.get("style") or "").replace(" ", "").lower()
     for prop in ("page-break-after:", "break-after:"):
-        if prop in style:
-            value = style.split(prop, 1)[1].split(";", 1)[0]
-            if value not in ("avoid", "auto", ""):
+        idx = style.find(prop)
+        if idx != -1 and (idx == 0 or style[idx - 1] == ";"):
+            value = style[idx + len(prop):].split(";", 1)[0]
+            if value not in ("avoid", "auto", "none", "inherit", "initial", "unset", ""):
                 return True
     return False
 
@@ -36,7 +37,12 @@ def _is_page_break(tag: Tag) -> bool:
 def _table_rows(table: Tag) -> list[list[str]]:
     rows = []
     for tr in table.find_all("tr"):
-        cells = tr.find_all(["td", "th"])
+        if tr.find_parent("table") is not table:
+            continue  # row belongs to a nested table; its parent cell flattens it
+        cells = [
+            cell for cell in tr.find_all(["td", "th"])
+            if cell.find_parent("table") is table
+        ]
         rows.append([cell.get_text(" ", strip=True) for cell in cells])
     return rows
 
