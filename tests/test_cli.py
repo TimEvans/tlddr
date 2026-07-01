@@ -1,5 +1,6 @@
+import json as _json
 from pathlib import Path
-from tlddr.cli import run_extract, main, _is_sec_boilerplate
+from tlddr.cli import run_extract, main, _is_sec_boilerplate, bench_record, bench_report
 from tlddr.models import SignalType
 
 
@@ -88,3 +89,64 @@ def test_run_extract_skips_boilerplate(tmp_path):
     assert any("cvx-20251231.htm" in t for t in titles)
     assert not any("R12.htm" in t for t in titles)
     assert not any("FilingSummary.xml" in t for t in titles)
+
+
+def test_bench_record_looks_up_source_size_for_doc(tmp_path):
+    extracted = tmp_path / "extracted"
+    extracted.mkdir()
+    (extracted / "cvx.json").write_text(_json.dumps({"content": "x" * 500, "pages": [{"page": 1}]}))
+    bench_dir = tmp_path / "benchmark"
+    row = bench_record(bench_dir, extracted, "understand-p1", "cvx", "doc",
+                       "sonnet", 8000, 4, 20000, "")
+    assert row["source_chars"] == 500 and row["source_pages"] == 1
+    assert (bench_dir / "metrics.jsonl").exists()
+
+
+def test_bench_record_non_doc_kind_skips_lookup(tmp_path):
+    row = bench_record(tmp_path / "b", None, "understand-p2", "corpus", "corpus",
+                       "sonnet", 5000, 3, 12000, "edges")
+    assert row["source_chars"] is None and row["unit_kind"] == "corpus"
+
+
+def test_bench_report_renders_recorded_rows(tmp_path):
+    bench_dir = tmp_path / "b"
+    bench_record(bench_dir, None, "draft", "sec-a", "section", "sonnet", 9000, 5, 30000, "")
+    out = bench_report(bench_dir)
+    assert "## Per-stage summary" in out and "sec-a" in out
+
+
+def test_main_bench_record_and_report(tmp_path, capsys):
+    bench_dir = tmp_path / "b"
+    rc = main(["bench", "record", "--benchmark", str(bench_dir), "--stage", "draft",
+               "--unit", "sec-a", "--kind", "section", "--model", "sonnet",
+               "--tokens", "9000", "--tools", "5", "--ms", "30000"])
+    assert rc == 0
+    rc = main(["bench", "report", "--benchmark", str(bench_dir)])
+    assert rc == 0
+    assert "Per-stage summary" in capsys.readouterr().out
+
+
+def test_extract_benchmark_flag_records_stage_row(tmp_path, simple_docx):
+    source = tmp_path / "src"
+    source.mkdir()
+    (source / simple_docx.name).write_bytes(simple_docx.read_bytes())
+    out = tmp_path / "out"
+    bench_dir = tmp_path / "benchmark"
+    rc = main(["extract", "--source", str(source), "--out", str(out),
+               "--benchmark", str(bench_dir)])
+    assert rc == 0
+    from tlddr import bench
+    rows = bench.load_rows(bench_dir)
+    assert len(rows) == 1
+    assert rows[0]["stage"] == "extract" and rows[0]["tokens"] == 0
+    assert rows[0]["unit_kind"] == "stage"
+
+
+def test_extract_without_benchmark_flag_records_nothing(tmp_path, simple_docx):
+    source = tmp_path / "src"
+    source.mkdir()
+    (source / simple_docx.name).write_bytes(simple_docx.read_bytes())
+    out = tmp_path / "out"
+    rc = main(["extract", "--source", str(source), "--out", str(out)])
+    assert rc == 0
+    assert not (tmp_path / "benchmark" / "metrics.jsonl").exists()

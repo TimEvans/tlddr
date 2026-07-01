@@ -19,6 +19,7 @@ from tlddr.draft.claims import validate_claims
 from tlddr.draft.eval import groundedness_readout
 from tlddr.draft.verify import ingest_verdicts
 from tlddr.draft.assemble import render_published, render_sidecar
+from tlddr import bench
 
 
 # SEC EDGAR ships each filing with machine-generated companions that duplicate
@@ -44,41 +45,42 @@ def _is_sec_boilerplate(path: Path) -> bool:
     return any(pattern.search(name) for pattern in _BOILERPLATE_PATTERNS)
 
 
-def run_extract(source: Path, out: Path) -> list[ExtractedDoc]:
-    extracted_dir = out / "extracted"
-    asset_dir = out / "thumbnails"
-    extracted_dir.mkdir(parents=True, exist_ok=True)
-    asset_dir.mkdir(parents=True, exist_ok=True)
-    ctx = ExtractContext(asset_dir=asset_dir)
+def run_extract(source: Path, out: Path, benchmark: Path | None = None) -> list[ExtractedDoc]:
+    with bench.timed_stage(benchmark, "extract"):
+        extracted_dir = out / "extracted"
+        asset_dir = out / "thumbnails"
+        extracted_dir.mkdir(parents=True, exist_ok=True)
+        asset_dir.mkdir(parents=True, exist_ok=True)
+        ctx = ExtractContext(asset_dir=asset_dir)
 
-    files = sorted(
-        p for p in source.rglob("*")
-        if p.is_file() and not _is_sec_boilerplate(p)
-    )
-    docs: list[ExtractedDoc] = []
-    for path in files:
-        try:
-            doc = route(path, ctx)
-        except Exception as exc:
-            doc = ExtractedDoc(
-                id=doc_id(path),
-                source_path=str(path),
-                source_sha256=sha256_file(path) if path.exists() else "",
-                signal_type=SignalType.UNKNOWN,
-                raw_title=path.stem,
-                content="",
-                warnings=[f"extraction failed: {type(exc).__name__}: {exc}"],
-                extractor="error",
-            )
-        json_path = extracted_dir / f"{doc.id}.json"
-        if json_path.exists():
-            print(f"warning: id collision on '{doc.id}', overwriting {json_path}")
-        json_path.write_text(doc.model_dump_json(indent=2))
-        docs.append(doc)
-        print(f"extracted {doc.id} [{doc.signal_type.value}] ({len(doc.warnings)} warnings)")
+        files = sorted(
+            p for p in source.rglob("*")
+            if p.is_file() and not _is_sec_boilerplate(p)
+        )
+        docs: list[ExtractedDoc] = []
+        for path in files:
+            try:
+                doc = route(path, ctx)
+            except Exception as exc:
+                doc = ExtractedDoc(
+                    id=doc_id(path),
+                    source_path=str(path),
+                    source_sha256=sha256_file(path) if path.exists() else "",
+                    signal_type=SignalType.UNKNOWN,
+                    raw_title=path.stem,
+                    content="",
+                    warnings=[f"extraction failed: {type(exc).__name__}: {exc}"],
+                    extractor="error",
+                )
+            json_path = extracted_dir / f"{doc.id}.json"
+            if json_path.exists():
+                print(f"warning: id collision on '{doc.id}', overwriting {json_path}")
+            json_path.write_text(doc.model_dump_json(indent=2))
+            docs.append(doc)
+            print(f"extracted {doc.id} [{doc.signal_type.value}] ({len(doc.warnings)} warnings)")
 
-    (out / "extraction-report.md").write_text(render_report(docs))
-    print(f"\nwrote {len(docs)} records and extraction-report.md to {out}")
+        (out / "extraction-report.md").write_text(render_report(docs))
+        print(f"\nwrote {len(docs)} records and extraction-report.md to {out}")
     return docs
 
 
@@ -194,25 +196,45 @@ def draft_verify_commit(verdicts_path: Path, work_dir: Path) -> None:
     print(f"raised {len(questions)} verify questions")
 
 
-def draft_eval(work_dir: Path, sections_path: Path) -> None:
-    print(groundedness_readout(_load_claims(work_dir), load_sections(sections_path)))
+def draft_eval(work_dir: Path, sections_path: Path, benchmark: Path | None = None) -> None:
+    with bench.timed_stage(benchmark, "draft-eval"):
+        print(groundedness_readout(_load_claims(work_dir), load_sections(sections_path)))
 
 
 def assemble(work_dir: Path, out_dir: Path, sections_path: Path,
-             vault_dir: Path = Path("vault")) -> None:
-    claims = _load_claims(work_dir)
-    sections = load_sections(sections_path)
-    questions_path = work_dir / "questions.json"
-    questions = ([Question.model_validate(q) for q in json.loads(questions_path.read_text())]
-                 if questions_path.exists() else [])
-    out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "report.md").write_text(render_published(sections, claims))
-    (out_dir / "report_comments.md").write_text(render_sidecar(sections, claims, questions))
-    nodes = [Node.model_validate_json(p.read_text())
-             for p in sorted((work_dir / "nodes").glob("*.json"))]
-    vault_dir.mkdir(parents=True, exist_ok=True)
-    (vault_dir / "_triage.md").write_text(render_triage(nodes, questions, sections))
-    print(f"assembled {len(claims)} claims into report.md + report_comments.md")
+             vault_dir: Path = Path("vault"), benchmark: Path | None = None) -> None:
+    with bench.timed_stage(benchmark, "assemble"):
+        claims = _load_claims(work_dir)
+        sections = load_sections(sections_path)
+        questions_path = work_dir / "questions.json"
+        questions = ([Question.model_validate(q) for q in json.loads(questions_path.read_text())]
+                     if questions_path.exists() else [])
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / "report.md").write_text(render_published(sections, claims))
+        (out_dir / "report_comments.md").write_text(render_sidecar(sections, claims, questions))
+        nodes = [Node.model_validate_json(p.read_text())
+                 for p in sorted((work_dir / "nodes").glob("*.json"))]
+        vault_dir.mkdir(parents=True, exist_ok=True)
+        (vault_dir / "_triage.md").write_text(render_triage(nodes, questions, sections))
+        print(f"assembled {len(claims)} claims into report.md + report_comments.md")
+
+
+def bench_record(benchmark_dir: Path, extracted_dir: Path | None, stage: str,
+                 unit: str, kind: str, model: str, tokens: int, tools: int,
+                 ms: int, notes: str) -> dict:
+    source_chars, source_pages = (
+        bench.source_size(extracted_dir, unit) if kind == "doc" else (None, None))
+    row = bench.record_row(benchmark_dir, stage=stage, unit=unit, unit_kind=kind,
+                           model=model, tokens=tokens, tool_uses=tools, duration_ms=ms,
+                           source_chars=source_chars, source_pages=source_pages, notes=notes)
+    print(f"recorded {stage}/{unit}: {tokens} tok, {tools} tools, {ms} ms"
+          + (f", {source_chars} src chars / {source_pages} pages"
+             if source_chars is not None else ""))
+    return row
+
+
+def bench_report(benchmark_dir: Path) -> str:
+    return bench.render_report(bench.load_rows(benchmark_dir))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -222,6 +244,7 @@ def main(argv: list[str] | None = None) -> int:
     extract_cmd = sub.add_parser("extract", help="extract source documents into node records")
     extract_cmd.add_argument("--source", required=True, type=Path)
     extract_cmd.add_argument("--out", default=Path(".tlddr"), type=Path)
+    extract_cmd.add_argument("--benchmark", type=Path, default=None)
 
     slice_cmd = sub.add_parser("understand-slice", help="print the bounded slice for one document")
     slice_cmd.add_argument("--extracted", required=True, type=Path)
@@ -259,16 +282,36 @@ def main(argv: list[str] | None = None) -> int:
     deval = sub.add_parser("draft-eval", help="print the tier-B groundedness readout")
     deval.add_argument("--work", default=Path(".tlddr"), type=Path)
     deval.add_argument("--sections", required=True, type=Path)
+    deval.add_argument("--benchmark", type=Path, default=None)
 
     asm = sub.add_parser("assemble", help="assemble report.md + report_comments.md")
     asm.add_argument("--work", default=Path(".tlddr"), type=Path)
     asm.add_argument("--out", default=Path("report"), type=Path)
     asm.add_argument("--sections", required=True, type=Path)
     asm.add_argument("--vault", default=Path("vault"), type=Path)
+    asm.add_argument("--benchmark", type=Path, default=None)
+
+    bench_cmd = sub.add_parser("bench", help="record and report run benchmarks")
+    bench_sub = bench_cmd.add_subparsers(dest="bench_command", required=True)
+
+    brec = bench_sub.add_parser("record", help="append one benchmark row")
+    brec.add_argument("--benchmark", required=True, type=Path)
+    brec.add_argument("--stage", required=True)
+    brec.add_argument("--unit", required=True)
+    brec.add_argument("--kind", default="doc", choices=["doc", "section", "corpus", "stage"])
+    brec.add_argument("--model", default="")
+    brec.add_argument("--tokens", required=True, type=int)
+    brec.add_argument("--tools", default=0, type=int)
+    brec.add_argument("--ms", required=True, type=int)
+    brec.add_argument("--extracted", type=Path, default=None)
+    brec.add_argument("--notes", default="")
+
+    brep = bench_sub.add_parser("report", help="print benchmark tables")
+    brep.add_argument("--benchmark", required=True, type=Path)
 
     args = parser.parse_args(argv)
     if args.command == "extract":
-        run_extract(args.source, args.out)
+        run_extract(args.source, args.out, args.benchmark)
         return 0
     if args.command == "understand-slice":
         print(understand_slice(args.extracted, args.id))
@@ -293,10 +336,17 @@ def main(argv: list[str] | None = None) -> int:
         draft_verify_commit(args.verdicts, args.work)
         return 0
     if args.command == "draft-eval":
-        draft_eval(args.work, args.sections)
+        draft_eval(args.work, args.sections, args.benchmark)
         return 0
     if args.command == "assemble":
-        assemble(args.work, args.out, args.sections, args.vault)
+        assemble(args.work, args.out, args.sections, args.vault, args.benchmark)
+        return 0
+    if args.command == "bench":
+        if args.bench_command == "record":
+            bench_record(args.benchmark, args.extracted, args.stage, args.unit,
+                         args.kind, args.model, args.tokens, args.tools, args.ms, args.notes)
+        elif args.bench_command == "report":
+            print(bench_report(args.benchmark))
         return 0
     return 1
 
