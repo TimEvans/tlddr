@@ -26,3 +26,13 @@ def test_route_unknown_extension_returns_unknown_with_warning(tmp_path):
     result = router.route(f, ctx)
     assert result.signal_type is SignalType.UNKNOWN
     assert any("no extractor" in w.lower() for w in result.warnings)
+
+
+def test_route_dispatches_htm_and_html_to_html_extractor(tmp_path):
+    ctx = ExtractContext(asset_dir=tmp_path)
+    for name in ("doc.htm", "doc.HTML"):
+        f = tmp_path / name
+        f.write_bytes(b"<html><body><p>hello world content</p></body></html>")
+        result = router.route(f, ctx)
+        assert result.extractor == "html"
+        assert "hello world content" in result.content

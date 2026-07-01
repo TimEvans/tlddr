@@ -1,5 +1,6 @@
 import argparse
 import json
+import re
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -20,6 +21,29 @@ from tlddr.draft.verify import ingest_verdicts
 from tlddr.draft.assemble import render_published, render_sidecar
 
 
+# SEC EDGAR ships each filing with machine-generated companions that duplicate
+# the primary document's content or describe the filing package itself. We skip
+# them so the corpus holds one faithful copy of each fact, not many:
+#   - R\d+.htm        : the XBRL viewer's re-render of facts already inline in
+#                       the primary document (133 of them in the Chevron 10-K).
+#   - *-index*.html   : the filing index / manifest pages.
+#   - FilingSummary.xml, *_cal/_def/_lab/_pre.xml, *.xsd, *-xbrl.zip : the XBRL
+#                       linkbases and schema, not human-readable content.
+_BOILERPLATE_PATTERNS = (
+    re.compile(r"^R\d+\.htm$", re.IGNORECASE),
+    re.compile(r"-index(-headers)?\.html$", re.IGNORECASE),
+    re.compile(r"^FilingSummary\.xml$", re.IGNORECASE),
+    re.compile(r"_(cal|def|lab|pre)\.xml$", re.IGNORECASE),
+    re.compile(r"\.xsd$", re.IGNORECASE),
+    re.compile(r"-xbrl\.zip$", re.IGNORECASE),
+)
+
+
+def _is_sec_boilerplate(path: Path) -> bool:
+    name = path.name
+    return any(pattern.search(name) for pattern in _BOILERPLATE_PATTERNS)
+
+
 def run_extract(source: Path, out: Path) -> list[ExtractedDoc]:
     extracted_dir = out / "extracted"
     asset_dir = out / "thumbnails"
@@ -27,7 +51,10 @@ def run_extract(source: Path, out: Path) -> list[ExtractedDoc]:
     asset_dir.mkdir(parents=True, exist_ok=True)
     ctx = ExtractContext(asset_dir=asset_dir)
 
-    files = sorted(p for p in source.rglob("*") if p.is_file())
+    files = sorted(
+        p for p in source.rglob("*")
+        if p.is_file() and not _is_sec_boilerplate(p)
+    )
     docs: list[ExtractedDoc] = []
     for path in files:
         try:

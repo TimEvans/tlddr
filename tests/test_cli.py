@@ -1,5 +1,5 @@
 from pathlib import Path
-from tlddr.cli import run_extract, main
+from tlddr.cli import run_extract, main, _is_sec_boilerplate
 from tlddr.models import SignalType
 
 
@@ -48,3 +48,43 @@ def test_run_extract_isolates_per_file_failure(tmp_path, simple_docx):
     assert broken.extractor == "error"
     assert broken.signal_type is SignalType.UNKNOWN
     assert broken.warnings and "fail" in broken.warnings[0].lower()
+
+
+def test_is_sec_boilerplate_matches_machine_generated_artifacts():
+    for name in (
+        "R12.htm", "R1.htm", "R133.htm",
+        "0000093410-26-000078-index.html",
+        "0000093410-26-000078-index-headers.html",
+        "FilingSummary.xml",
+        "cvx-20251231_cal.xml", "cvx-20251231_def.xml",
+        "cvx-20251231_lab.xml", "cvx-20251231_pre.xml",
+        "cvx-20251231.xsd",
+        "0000093410-26-000078-xbrl.zip",
+    ):
+        assert _is_sec_boilerplate(Path("/x") / name), name
+
+
+def test_is_sec_boilerplate_keeps_real_content():
+    for name in ("cvx-20251231.htm", "a12312025ex19.htm", "report.pdf", "notes.docx"):
+        assert not _is_sec_boilerplate(Path("/x") / name), name
+
+
+def test_is_sec_boilerplate_keeps_non_xbrl_zip():
+    from tlddr.cli import _is_sec_boilerplate
+    from pathlib import Path
+    assert not _is_sec_boilerplate(Path("/x/supplemental-data.zip"))
+    assert _is_sec_boilerplate(Path("/x/0000093410-26-000078-xbrl.zip"))
+
+
+def test_run_extract_skips_boilerplate(tmp_path):
+    source = tmp_path / "src"
+    source.mkdir()
+    (source / "cvx-20251231.htm").write_bytes(b"<html><body><p>Real filing content</p></body></html>")
+    (source / "R12.htm").write_bytes(b"<html><body><p>Duplicate XBRL fragment</p></body></html>")
+    (source / "FilingSummary.xml").write_bytes(b"<xml/>")
+    out = tmp_path / "out"
+    docs = run_extract(source, out)
+    titles = {d.source_path for d in docs}
+    assert any("cvx-20251231.htm" in t for t in titles)
+    assert not any("R12.htm" in t for t in titles)
+    assert not any("FilingSummary.xml" in t for t in titles)

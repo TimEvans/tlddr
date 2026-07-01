@@ -37,3 +37,8 @@ EXTRACTORS[".xlsx"] = _xlsx.extract
 from tlddr.extract import kmz as _kmz
 
 EXTRACTORS[".kmz"] = _kmz.extract
+
+from tlddr.extract import html as _html
+
+EXTRACTORS[".htm"] = _html.extract
+EXTRACTORS[".html"] = _html.extract

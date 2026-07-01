@@ -18,6 +18,7 @@ class ExtractMethod(str, Enum):
     PYMUPDF_TEXT = "pymupdf_text"
     OPENPYXL_XLSX = "openpyxl_xlsx"
     KMZ_IDENTITY = "kmz_identity"
+    HTML_TEXT = "html_text"
     VISION = "vision"
     OCR = "ocr"
 
