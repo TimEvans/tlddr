@@ -19,6 +19,7 @@ from tlddr.draft.claims import validate_claims
 from tlddr.draft.eval import groundedness_readout
 from tlddr.draft.verify import ingest_verdicts
 from tlddr.draft.assemble import render_published, render_sidecar
+from tlddr import bench
 
 
 # SEC EDGAR ships each filing with machine-generated companions that duplicate
@@ -215,6 +216,24 @@ def assemble(work_dir: Path, out_dir: Path, sections_path: Path,
     print(f"assembled {len(claims)} claims into report.md + report_comments.md")
 
 
+def bench_record(benchmark_dir: Path, extracted_dir: Path | None, stage: str,
+                 unit: str, kind: str, model: str, tokens: int, tools: int,
+                 ms: int, notes: str) -> dict:
+    source_chars, source_pages = (
+        bench.source_size(extracted_dir, unit) if kind == "doc" else (None, None))
+    row = bench.record_row(benchmark_dir, stage=stage, unit=unit, unit_kind=kind,
+                           model=model, tokens=tokens, tool_uses=tools, duration_ms=ms,
+                           source_chars=source_chars, source_pages=source_pages, notes=notes)
+    print(f"recorded {stage}/{unit}: {tokens} tok, {tools} tools, {ms} ms"
+          + (f", {source_chars} src chars / {source_pages} pages"
+             if source_chars is not None else ""))
+    return row
+
+
+def bench_report(benchmark_dir: Path) -> str:
+    return bench.render_report(bench.load_rows(benchmark_dir))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="tlddr")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -266,6 +285,24 @@ def main(argv: list[str] | None = None) -> int:
     asm.add_argument("--sections", required=True, type=Path)
     asm.add_argument("--vault", default=Path("vault"), type=Path)
 
+    bench_cmd = sub.add_parser("bench", help="record and report run benchmarks")
+    bench_sub = bench_cmd.add_subparsers(dest="bench_command", required=True)
+
+    brec = bench_sub.add_parser("record", help="append one benchmark row")
+    brec.add_argument("--benchmark", required=True, type=Path)
+    brec.add_argument("--stage", required=True)
+    brec.add_argument("--unit", required=True)
+    brec.add_argument("--kind", default="doc", choices=["doc", "section", "corpus", "stage"])
+    brec.add_argument("--model", default="")
+    brec.add_argument("--tokens", required=True, type=int)
+    brec.add_argument("--tools", default=0, type=int)
+    brec.add_argument("--ms", required=True, type=int)
+    brec.add_argument("--extracted", type=Path, default=None)
+    brec.add_argument("--notes", default="")
+
+    brep = bench_sub.add_parser("report", help="print benchmark tables")
+    brep.add_argument("--benchmark", required=True, type=Path)
+
     args = parser.parse_args(argv)
     if args.command == "extract":
         run_extract(args.source, args.out)
@@ -297,6 +334,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "assemble":
         assemble(args.work, args.out, args.sections, args.vault)
+        return 0
+    if args.command == "bench":
+        if args.bench_command == "record":
+            bench_record(args.benchmark, args.extracted, args.stage, args.unit,
+                         args.kind, args.model, args.tokens, args.tools, args.ms, args.notes)
+        elif args.bench_command == "report":
+            print(bench_report(args.benchmark))
         return 0
     return 1
 
