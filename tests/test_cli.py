@@ -124,3 +124,29 @@ def test_main_bench_record_and_report(tmp_path, capsys):
     rc = main(["bench", "report", "--benchmark", str(bench_dir)])
     assert rc == 0
     assert "Per-stage summary" in capsys.readouterr().out
+
+
+def test_extract_benchmark_flag_records_stage_row(tmp_path, simple_docx):
+    source = tmp_path / "src"
+    source.mkdir()
+    (source / simple_docx.name).write_bytes(simple_docx.read_bytes())
+    out = tmp_path / "out"
+    bench_dir = tmp_path / "benchmark"
+    rc = main(["extract", "--source", str(source), "--out", str(out),
+               "--benchmark", str(bench_dir)])
+    assert rc == 0
+    from tlddr import bench
+    rows = bench.load_rows(bench_dir)
+    assert len(rows) == 1
+    assert rows[0]["stage"] == "extract" and rows[0]["tokens"] == 0
+    assert rows[0]["unit_kind"] == "stage"
+
+
+def test_extract_without_benchmark_flag_records_nothing(tmp_path, simple_docx):
+    source = tmp_path / "src"
+    source.mkdir()
+    (source / simple_docx.name).write_bytes(simple_docx.read_bytes())
+    out = tmp_path / "out"
+    rc = main(["extract", "--source", str(source), "--out", str(out)])
+    assert rc == 0
+    assert not (tmp_path / "benchmark" / "metrics.jsonl").exists()
