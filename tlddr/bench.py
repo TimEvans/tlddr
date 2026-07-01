@@ -67,3 +67,78 @@ def timed_stage(benchmark_dir: Path | None, stage: str, unit: str = "all",
         ms = int((time.monotonic() - start) * 1000)
         record_row(benchmark_dir, stage=stage, unit=unit, unit_kind=unit_kind,
                    tokens=0, duration_ms=ms, notes=notes)
+
+
+def _per_1k(tokens: int, chars: int | None) -> str:
+    if not chars:
+        return "-"
+    return f"{tokens / (chars / 1000):.0f}"
+
+
+def _per_page(tokens: int, pages: int | None) -> str:
+    if not pages:
+        return "-"
+    return f"{tokens / pages:.0f}"
+
+
+def _fmt_ms(ms: float) -> str:
+    return f"{ms / 1000:.1f}s"
+
+
+def _stage_order(rows: list[dict]) -> list[str]:
+    order, seen = [], set()
+    for r in rows:
+        if r["stage"] not in seen:
+            seen.add(r["stage"])
+            order.append(r["stage"])
+    return order
+
+
+def _stage_summary(rows: list[dict]) -> str:
+    out = ["## Per-stage summary\n",
+           "| stage | model | units | total tok | mean tok | median tok | total time | mean time | mean tok/1k |",
+           "|---|---|---:|---:|---:|---:|---:|---:|---:|"]
+    for stage in _stage_order(rows):
+        srows = [r for r in rows if r["stage"] == stage]
+        tokens = [r["tokens"] for r in srows]
+        durations = [r["duration_ms"] for r in srows]
+        densities = [r["tokens"] / (r["source_chars"] / 1000)
+                     for r in srows if r.get("source_chars")]
+        mean_density = f"{statistics.mean(densities):.0f}" if densities else "-"
+        out.append(
+            f"| {stage} | {srows[0].get('model') or 'det'} | {len(srows)} | {sum(tokens)} | "
+            f"{statistics.mean(tokens):.0f} | {statistics.median(tokens):.0f} | "
+            f"{_fmt_ms(sum(durations))} | {_fmt_ms(statistics.mean(durations))} | {mean_density} |")
+    agentic = [r for r in rows if r["tokens"] > 0]
+    if agentic:
+        out.append("")
+        out.append(f"**Totals (agentic):** {sum(r['tokens'] for r in agentic)} tokens across "
+                   f"{len(agentic)} units; isolated work-time "
+                   f"{_fmt_ms(sum(r['duration_ms'] for r in agentic))} "
+                   f"(= stage wall-clock under sequential dispatch).")
+    return "\n".join(out)
+
+
+def _unit_detail(rows: list[dict]) -> str:
+    out = ["## Per-unit detail\n"]
+    for stage in _stage_order(rows):
+        srows = [r for r in rows if r["stage"] == stage]
+        out.append(f"### {stage}  (model: {srows[0].get('model') or 'deterministic'})\n")
+        out.append("| unit | kind | tokens | tools | time | src chars | pages | tok/1k | tok/page |")
+        out.append("|---|---|---:|---:|---:|---:|---:|---:|---:|")
+        for r in srows:
+            out.append(
+                f"| {r['unit']} | {r['unit_kind']} | {r['tokens']} | {r['tool_uses']} | "
+                f"{_fmt_ms(r['duration_ms'])} | "
+                f"{r['source_chars'] if r['source_chars'] is not None else '-'} | "
+                f"{r['source_pages'] if r['source_pages'] is not None else '-'} | "
+                f"{_per_1k(r['tokens'], r['source_chars'])} | "
+                f"{_per_page(r['tokens'], r['source_pages'])} |")
+        out.append("")
+    return "\n".join(out)
+
+
+def render_report(rows: list[dict]) -> str:
+    if not rows:
+        return "no benchmark rows recorded yet"
+    return _stage_summary(rows) + "\n\n" + _unit_detail(rows)

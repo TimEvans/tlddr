@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 from tlddr import bench
 
@@ -57,3 +56,33 @@ def test_timed_stage_noop_when_dir_none(tmp_path):
     with bench.timed_stage(None, "extract"):
         pass
     assert not (tmp_path / "metrics.jsonl").exists()
+
+
+def test_render_report_empty():
+    assert bench.render_report([]) == "no benchmark rows recorded yet"
+
+
+def test_render_report_has_stage_and_unit_tables_with_normalization():
+    rows = [
+        {"stage": "extract", "unit": "all", "unit_kind": "stage", "model": "",
+         "tokens": 0, "tool_uses": 0, "duration_ms": 2656,
+         "source_chars": None, "source_pages": None, "notes": ""},
+        {"stage": "understand-p1", "unit": "cvx", "unit_kind": "doc", "model": "sonnet",
+         "tokens": 41075, "tool_uses": 17, "duration_ms": 170046,
+         "source_chars": 599356, "source_pages": 126, "notes": ""},
+        {"stage": "understand-p1", "unit": "ex21", "unit_kind": "doc", "model": "sonnet",
+         "tokens": 8000, "tool_uses": 4, "duration_ms": 20000,
+         "source_chars": 2000, "source_pages": 1, "notes": ""},
+    ]
+    out = bench.render_report(rows)
+    assert "## Per-stage summary" in out
+    assert "## Per-unit detail" in out
+    # stages appear in first-seen order
+    assert out.index("extract") < out.index("understand-p1")
+    # normalization present: 41075 / (599356/1000) ~= 69 tok/1k
+    assert "69" in out
+    # small doc has high density: 8000 / (2000/1000) = 4000 tok/1k
+    assert "4000" in out
+    # deterministic stage labeled, agentic totals reported
+    assert "deterministic" in out
+    assert "Totals (agentic)" in out
