@@ -317,30 +317,24 @@ def main(argv: list[str] | None = None) -> int:
     render_cmd.add_argument("--output", type=Path, default=None)
 
     dread = sub.add_parser("draft-read", help="serve a node's content/pages for drafting")
-    dread.add_argument("--extracted", required=True, type=Path)
+    dread.add_argument("--output", type=Path, default=None)
     dread.add_argument("--id", required=True)
     dread.add_argument("--pages", type=str, default=None, help="comma-separated page numbers")
 
     dcommit = sub.add_parser("draft-commit", help="validate agent draft claims for a section")
     dcommit.add_argument("--claims", required=True, type=Path)
-    dcommit.add_argument("--extracted", required=True, type=Path)
-    dcommit.add_argument("--work", default=Path(".tlddr"), type=Path)
-    dcommit.add_argument("--sections", type=Path, default=None)
+    dcommit.add_argument("--output", type=Path, default=None)
 
     dverify = sub.add_parser("draft-verify-commit", help="ingest C-lite judge verdicts")
     dverify.add_argument("--verdicts", required=True, type=Path)
-    dverify.add_argument("--work", default=Path(".tlddr"), type=Path)
+    dverify.add_argument("--output", type=Path, default=None)
 
     deval = sub.add_parser("draft-eval", help="print the tier-B groundedness readout")
-    deval.add_argument("--work", default=Path(".tlddr"), type=Path)
-    deval.add_argument("--sections", required=True, type=Path)
+    deval.add_argument("--output", type=Path, default=None)
     deval.add_argument("--benchmark", type=Path, default=None)
 
     asm = sub.add_parser("assemble", help="assemble report.md + report_comments.md")
-    asm.add_argument("--work", default=Path(".tlddr"), type=Path)
-    asm.add_argument("--out", default=Path("report"), type=Path)
-    asm.add_argument("--sections", required=True, type=Path)
-    asm.add_argument("--vault", default=Path("vault"), type=Path)
+    asm.add_argument("--output", type=Path, default=None)
     asm.add_argument("--benchmark", type=Path, default=None)
 
     bench_cmd = sub.add_parser("bench", help="record and report run benchmarks")
@@ -384,20 +378,26 @@ def main(argv: list[str] | None = None) -> int:
         understand_render(paths.work, paths.vault, sections)
         return 0
     if args.command == "draft-read":
+        paths = Paths(resolve_base(args.output))
         pages = [int(p) for p in args.pages.split(",")] if args.pages else None
-        print(draft_read(args.extracted, args.id, pages))
+        print(draft_read(paths.extracted, args.id, pages))
         return 0
     if args.command == "draft-commit":
-        draft_commit(args.claims, args.extracted, args.work, args.sections)
+        paths = Paths(resolve_base(args.output))
+        sections = paths.sections if paths.sections.exists() else None
+        draft_commit(args.claims, paths.extracted, paths.work, sections)
         return 0
     if args.command == "draft-verify-commit":
-        draft_verify_commit(args.verdicts, args.work)
+        paths = Paths(resolve_base(args.output))
+        draft_verify_commit(args.verdicts, paths.work)
         return 0
     if args.command == "draft-eval":
-        draft_eval(args.work, args.sections, args.benchmark)
+        paths = Paths(resolve_base(args.output))
+        draft_eval(paths.work, paths.sections, args.benchmark)
         return 0
     if args.command == "assemble":
-        assemble(args.work, args.out, args.sections, args.vault, args.benchmark)
+        paths = Paths(resolve_base(args.output))
+        assemble(paths.work, paths.report, paths.sections, paths.vault, args.benchmark)
         return 0
     if args.command == "bench":
         if args.bench_command == "record":
