@@ -15,18 +15,29 @@ An independent judge pass that re-reads the source evidence and assesses each co
 - **CLI ingests and raises questions:** only disagreements produce questions. Agreements are silent. All questions are tagged `raised_by=verify` and surface in `report_comments.md` after assembly.
 - **Fresh context required:** do not carry over any reasoning, notes, or intermediate conclusions from the drafting pass. The value of this pass is independence.
 
+## Output location
+
+All paths below are relative to the run's output base, `$TLDDR_OUTPUT` (default
+`.tlddr` when unset). Set it once at the start of the run so every `tlddr`
+command and file reference resolves under the same directory:
+
+    export TLDDR_OUTPUT=<your-output-dir>   # e.g. output/Chevron-10K
+
+Work artifacts live under `$TLDDR_OUTPUT/work/`, the rendered vault under
+`$TLDDR_OUTPUT/vault/`, and the report under `$TLDDR_OUTPUT/report/`.
+
 ## Prerequisites
 
 Before starting:
 
-1. **Committed claims store** — `.tlddr/claims.json` must exist and be non-empty. If missing, run the `draft` skill first.
-2. **Extracted store** — `.tlddr/extracted/*.json` must exist.
+1. **Committed claims store** — `$TLDDR_OUTPUT/work/claims.json` must exist and be non-empty. If missing, run the `draft` skill first.
+2. **Extracted store** — `$TLDDR_OUTPUT/work/extracted/*.json` must exist.
 
 ## Procedure
 
 ### 1. Load the committed claims
 
-Read `.tlddr/claims.json`. The array is the authoritative ordered list of committed claims. Note the total count — your verdict array must have one entry per claim, covering every index from `0` to `n-1` in order.
+Read `$TLDDR_OUTPUT/work/claims.json`. The array is the authoritative ordered list of committed claims. Note the total count — your verdict array must have one entry per claim, covering every index from `0` to `n-1` in order.
 
 Each claim record contains: `section_id`, `text`, `support_level` (the drafter's assessment), `evidence_relation`, and `sources` (a list of `{node_id, page}` pairs).
 
@@ -37,7 +48,7 @@ For each claim (in index order):
 #### 2a. Read the cited page(s)
 
 ```
-tlddr draft-read --extracted .tlddr/extracted --id <node_id> --pages <p>
+tlddr draft-read --output "$TLDDR_OUTPUT" --id <node_id> --pages <p>
 ```
 
 Request only the pages cited by the claim (the `sources` array). If a claim cites multiple nodes or multiple pages on the same node, read each page separately. Do not read pages that are not cited — the judge's scope is the cited evidence only.
@@ -55,7 +66,7 @@ Do not reference any information beyond the pages you have read for that specifi
 
 ### 3. Emit verdicts JSON
 
-Write the complete verdicts array to a temporary file (e.g. `.tlddr/verdicts.json`). The array must contain one entry per claim, in the same index order as `.tlddr/claims.json`:
+Write the complete verdicts array to a temporary file (e.g. `$TLDDR_OUTPUT/work/verdicts.json`). The array must contain one entry per claim, in the same index order as `$TLDDR_OUTPUT/work/claims.json`:
 
 ```json
 [
@@ -71,8 +82,8 @@ Every index from `0` to `n-1` must appear. An omitted index leaves that claim un
 
 ```
 tlddr draft-verify-commit \
-  --verdicts .tlddr/verdicts.json \
-  --work .tlddr
+  --verdicts "$TLDDR_OUTPUT/work/verdicts.json" \
+  --output "$TLDDR_OUTPUT"
 ```
 
 The CLI compares each judged `support_level` against the drafter's recorded level. A downgrade (judge's level is lower than the drafter's) or a `contradiction: true` raises a question. Agreements produce no output. The command prints how many questions were raised.
@@ -84,7 +95,7 @@ Check how many questions were raised. If the count is high relative to the total
 Run the groundedness readout to see the current overall picture:
 
 ```
-tlddr draft-eval --work .tlddr --sections .tlddr/sections.json
+tlddr draft-eval --output "$TLDDR_OUTPUT"
 ```
 
 ## Proving Gate

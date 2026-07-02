@@ -17,19 +17,30 @@ The CLI owns persistence and quality gates:
 - **CLI validates and drops:** unresolvable citations (unknown node_id or page not in the doc's page index), and turns zero-citation claims into findings. Claims tagged to a section id that does not exist in `sections.json` are also dropped with a finding (mirroring how Understand drops unknown section tags).
 - **Corollary:** if a claim is silently absent from the committed store, the CLI dropped it — either the node_id does not exist, the page is not in the extracted record, or the section_id is not a known section. Check ids, page numbers, and section ids.
 
+## Output location
+
+All paths below are relative to the run's output base, `$TLDDR_OUTPUT` (default
+`.tlddr` when unset). Set it once at the start of the run so every `tlddr`
+command and file reference resolves under the same directory:
+
+    export TLDDR_OUTPUT=<your-output-dir>   # e.g. output/Chevron-10K
+
+Work artifacts live under `$TLDDR_OUTPUT/work/`, the rendered vault under
+`$TLDDR_OUTPUT/vault/`, and the report under `$TLDDR_OUTPUT/report/`.
+
 ## Prerequisites
 
 Before starting any section:
 
-1. **Committed vault** — `.tlddr/nodes/*.json` must exist. If missing, run the `understand` skill first.
-2. **Curated sections** — `.tlddr/sections.json` must exist. If missing, run the `generate-sections` skill.
-3. **Extracted store** — `.tlddr/extracted/*.json` must exist (the canonical content store).
+1. **Committed vault** — `$TLDDR_OUTPUT/work/nodes/*.json` must exist. If missing, run the `understand` skill first.
+2. **Curated sections** — `$TLDDR_OUTPUT/work/sections.json` must exist. If missing, run the `generate-sections` skill.
+3. **Extracted store** — `$TLDDR_OUTPUT/work/extracted/*.json` must exist (the canonical content store).
 
 ## Phase 1 — Identify evidence per section
 
 For each section in `sections.json`:
 
-1. Find all node files whose `report_sections` array contains this section's id. Scan `.tlddr/nodes/*.json` and collect every node where `report_sections` includes the section id.
+1. Find all node files whose `report_sections` array contains this section's id. Scan `$TLDDR_OUTPUT/work/nodes/*.json` and collect every node where `report_sections` includes the section id.
 
 2. If no nodes are tagged for a section, the CLI will emit a no-evidence finding for any claim submitted for that section. Skip drafting for sections with zero tagged nodes — they will be called out in the groundedness readout.
 
@@ -40,7 +51,7 @@ For each node tagged to the current section:
 ### 2a. Attempt whole-doc read
 
 ```
-tlddr draft-read --extracted .tlddr/extracted --id <node_id>
+tlddr draft-read --output "$TLDDR_OUTPUT" --id <node_id>
 ```
 
 - If the document is short enough (under the internal threshold), the entire content is returned. Read it fully and proceed to Phase 3.
@@ -51,7 +62,7 @@ tlddr draft-read --extracted .tlddr/extracted --id <node_id>
 From the overview, identify which pages are relevant to this section, then fetch them:
 
 ```
-tlddr draft-read --extracted .tlddr/extracted --id <node_id> --pages 1,4,7
+tlddr draft-read --output "$TLDDR_OUTPUT" --id <node_id> --pages 1,4,7
 ```
 
 The response contains only the requested pages. Re-call with a different page list if more content is needed. Only cite pages you have actually read — citations to pages you have not fetched will be dropped at commit time.
@@ -71,7 +82,7 @@ Draft each section against its `guidance` field from `sections.json` (if non-nul
 
 ### 4a. Write claims JSON
 
-Write the claims array for this section to a temporary file (e.g. `.tlddr/draft-<section_id>.json`):
+Write the claims array for this section to a temporary file (e.g. `$TLDDR_OUTPUT/work/draft-<section_id>.json`):
 
 ```json
 [
@@ -103,10 +114,8 @@ Each file must be a JSON array, even if it contains a single claim. All claims i
 
 ```
 tlddr draft-commit \
-  --claims .tlddr/draft-<section_id>.json \
-  --extracted .tlddr/extracted \
-  --work .tlddr \
-  --sections .tlddr/sections.json
+  --claims "$TLDDR_OUTPUT/work/draft-<section_id>.json" \
+  --output "$TLDDR_OUTPUT"
 ```
 
 The CLI validates each claim's citations, drops those that cannot be resolved, turns zero-citation claims into findings, and writes the valid claims to the committed store. Claims tagged to an unknown section id are dropped with a finding. The commit is section-scoped: re-committing for the same section replaces all prior claims for that section cleanly.
@@ -120,7 +129,7 @@ After each commit, delete or overwrite the temporary file before drafting the ne
 Once all sections are drafted and committed:
 
 ```
-tlddr draft-eval --work .tlddr --sections .tlddr/sections.json
+tlddr draft-eval --output "$TLDDR_OUTPUT"
 ```
 
 Prints: total claims, support level breakdown (fully/partially/unsupported), evidence relation split (quoted vs inferred), and a list of sections with no evidence. Review this readout before assembling. A high proportion of `partially_supported` or `unsupported` claims is a signal to re-read evidence or re-draft.
@@ -129,17 +138,14 @@ Prints: total claims, support level breakdown (fully/partially/unsupported), evi
 
 ```
 tlddr assemble \
-  --work .tlddr \
-  --out report \
-  --sections .tlddr/sections.json \
-  --vault vault
+  --output "$TLDDR_OUTPUT"
 ```
 
-Writes `report/report.md` (the attributed draft, claims assembled under section headings) and `report/report_comments.md` (open findings and verify questions surfaced as inline comments). Also refreshes `vault/_triage.md` with all current questions (including draft and verify findings) so the D6 answer loop has an up-to-date answer surface. Share both report files with the user.
+Writes `$TLDDR_OUTPUT/report/report.md` (the attributed draft, claims assembled under section headings) and `$TLDDR_OUTPUT/report/report_comments.md` (open findings and verify questions surfaced as inline comments). Also refreshes `$TLDDR_OUTPUT/vault/_triage.md` with all current questions (including draft and verify findings) so the D6 answer loop has an up-to-date answer surface. Share both report files with the user.
 
 ## Proving Gate
 
-Stop. Ask the user to review `report/report.md` and `report/report_comments.md` and confirm:
+Stop. Ask the user to review `$TLDDR_OUTPUT/report/report.md` and `$TLDDR_OUTPUT/report/report_comments.md` and confirm:
 
 - Every section's claims are faithful to the source evidence.
 - The groundedness readout (support levels, no-evidence sections) is acceptable.

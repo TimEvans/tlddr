@@ -17,38 +17,49 @@ The CLI is the only thing that writes authoritative output:
 - **CLI validates and drops:** section tags whose id is not in `sections.json`, edge targets that are not known node ids, and self-links. Triage is machine-derived — never hand-set.
 - **Corollary:** if a section tag or edge target is silently absent from the rendered vault, the CLI dropped it. Check ids.
 
+## Output location
+
+All paths below are relative to the run's output base, `$TLDDR_OUTPUT` (default
+`.tlddr` when unset). Set it once at the start of the run so every `tlddr`
+command and file reference resolves under the same directory:
+
+    export TLDDR_OUTPUT=<your-output-dir>   # e.g. output/Chevron-10K
+
+Work artifacts live under `$TLDDR_OUTPUT/work/`, the rendered vault under
+`$TLDDR_OUTPUT/vault/`, and the report under `$TLDDR_OUTPUT/report/`.
+
 ## Prerequisites
 
 Before starting any phase:
 
-1. **Extracted store** — `.tlddr/extracted/*.json` must exist. If missing, run:
+1. **Extracted store** — `$TLDDR_OUTPUT/work/extracted/*.json` must exist. If missing, run:
    ```
-   tlddr extract --source <source-dir> --out .tlddr
+   tlddr extract --source <source-dir> --output "$TLDDR_OUTPUT"
    ```
 
-2. **Curated sections** — `.tlddr/sections.json` must exist. If missing, run the `generate-sections` skill to build it.
+2. **Curated sections** — `$TLDDR_OUTPUT/work/sections.json` must exist. If missing, run the `generate-sections` skill to build it.
 
 3. **Load and verify the section structure** — run once to confirm ids and hierarchy are clean:
    ```
-   tlddr sections --sections .tlddr/sections.json
+   tlddr sections --sections "$TLDDR_OUTPUT/work/sections.json"
    ```
    The command prints each section and exits 0. Fix any reported errors before proceeding.
 
 ## Phase 1 — Comprehend (per document)
 
-For each document id in `.tlddr/extracted/`:
+For each document id in `$TLDDR_OUTPUT/work/extracted/`:
 
 ### 1. Read the slice
 
 ```
-tlddr understand-slice --extracted .tlddr/extracted --id <id>
+tlddr understand-slice --output "$TLDDR_OUTPUT" --id <id>
 ```
 
 This prints a bounded slice of the extracted document (title, structure markers, capped content sample). Read it fully.
 
 ### 2. Write the enrichment file
 
-Write `.tlddr/enrichment/<id>.json` with exactly these fields:
+Write `$TLDDR_OUTPUT/work/enrichment/<id>.json` with exactly these fields:
 
 ```json
 {
@@ -74,7 +85,7 @@ Do not propose edges in this phase. Process all documents before moving to Phase
 
 ## Phase 2 — Relate (holistic, once)
 
-Read every `.tlddr/enrichment/*.json` to build a complete picture of the corpus — all ids, all descriptions.
+Read every `$TLDDR_OUTPUT/work/enrichment/*.json` to build a complete picture of the corpus — all ids, all descriptions.
 
 Propose typed edges across the whole corpus. For each enrichment file, add or update the `related` list:
 
@@ -96,14 +107,12 @@ Constraints:
 
 ### Commit each enrichment file
 
-For each `.tlddr/enrichment/<id>.json`:
+For each `$TLDDR_OUTPUT/work/enrichment/<id>.json`:
 
 ```
 tlddr understand-commit \
-  --enrichment .tlddr/enrichment/<id>.json \
-  --extracted .tlddr/extracted \
-  --out .tlddr \
-  --sections .tlddr/sections.json
+  --enrichment "$TLDDR_OUTPUT/work/enrichment/<id>.json" \
+  --output "$TLDDR_OUTPUT"
 ```
 
 This validates the enrichment, validates edges, computes extraction confidence, derives triage, and writes the node record. The command is idempotent — re-running overwrites the previous node cleanly.
@@ -114,20 +123,18 @@ Once all commits are done, render once:
 
 ```
 tlddr understand-render \
-  --work .tlddr \
-  --vault vault \
-  --sections .tlddr/sections.json
+  --output "$TLDDR_OUTPUT"
 ```
 
-This writes `vault/<id>.md` (one per node), `vault/_index.md` (summary table), and `vault/_triage.md` (nodes grouped Red/Amber/Green with open questions).
+This writes `$TLDDR_OUTPUT/vault/<id>.md` (one per node), `$TLDDR_OUTPUT/vault/_index.md` (summary table), and `$TLDDR_OUTPUT/vault/_triage.md` (nodes grouped Red/Amber/Green with open questions).
 
 ## Phase 4 — Coverage
 
 Add the vault to TurboVault (MCP) so it can be explored as a linked graph:
 
-1. Register `vault/` as a TurboVault vault.
+1. Register `$TLDDR_OUTPUT/vault/` as a TurboVault vault.
 2. Run graph-level explorations: isolated nodes, thin clusters, hub notes.
-3. Write findings into `vault/_triage.md` as a coverage layer **appended beneath the deterministic backbone** — do not overwrite or reorder the rendered sections.
+3. Write findings into `$TLDDR_OUTPUT/vault/_triage.md` as a coverage layer **appended beneath the deterministic backbone** — do not overwrite or reorder the rendered sections.
 
 Coverage observations to include:
 - Documents the automated triage missed or under-scored (isolated but substantive).
@@ -137,7 +144,7 @@ Coverage observations to include:
 
 ## Proving Gate
 
-Stop. Ask the user to open `vault/` and `vault/_triage.md` and confirm:
+Stop. Ask the user to open `$TLDDR_OUTPUT/vault/` and `$TLDDR_OUTPUT/vault/_triage.md` and confirm:
 
 - The section index looks like a trustworthy map of the corpus.
 - Triage colours match their reading of the documents.
