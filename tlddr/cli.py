@@ -1,8 +1,10 @@
 import argparse
 import json
+import os
 import re
 import sys
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from tlddr.extract.base import ExtractContext
 from tlddr.extract.router import route
@@ -20,6 +22,60 @@ from tlddr.draft.eval import groundedness_readout
 from tlddr.draft.verify import ingest_verdicts
 from tlddr.draft.assemble import render_published, render_sidecar
 from tlddr import bench
+
+
+def resolve_base(cli_output: Path | None) -> Path:
+    """Resolve the output base dir: --output flag > TLDDR_OUTPUT env > ./.tlddr."""
+    if cli_output is not None:
+        return cli_output
+    return Path(os.environ.get("TLDDR_OUTPUT") or ".tlddr")
+
+
+@dataclass(frozen=True)
+class Paths:
+    """Derive every output root from a single base directory."""
+
+    base: Path
+
+    @property
+    def work(self) -> Path:
+        return self.base / "work"
+
+    @property
+    def extracted(self) -> Path:
+        return self.work / "extracted"
+
+    @property
+    def thumbnails(self) -> Path:
+        return self.work / "thumbnails"
+
+    @property
+    def nodes(self) -> Path:
+        return self.work / "nodes"
+
+    @property
+    def enrichment(self) -> Path:
+        return self.work / "enrichment"
+
+    @property
+    def sections(self) -> Path:
+        return self.work / "sections.json"
+
+    @property
+    def questions(self) -> Path:
+        return self.work / "questions.json"
+
+    @property
+    def claims(self) -> Path:
+        return self.work / "claims.json"
+
+    @property
+    def vault(self) -> Path:
+        return self.base / "vault"
+
+    @property
+    def report(self) -> Path:
+        return self.base / "report"
 
 
 # SEC EDGAR ships each filing with machine-generated companions that duplicate
