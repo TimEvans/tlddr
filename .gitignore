@@ -8,6 +8,8 @@ report/
 /docs/test-reports/
 /.timekeeper
 
+output/
+
 # Brainstorm visual-companion scratch
 .superpowers/
 /chevron/

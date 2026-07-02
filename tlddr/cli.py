@@ -299,11 +299,11 @@ def main(argv: list[str] | None = None) -> int:
 
     extract_cmd = sub.add_parser("extract", help="extract source documents into node records")
     extract_cmd.add_argument("--source", required=True, type=Path)
-    extract_cmd.add_argument("--out", default=Path(".tlddr"), type=Path)
+    extract_cmd.add_argument("--output", type=Path, default=None)
     extract_cmd.add_argument("--benchmark", type=Path, default=None)
 
     slice_cmd = sub.add_parser("understand-slice", help="print the bounded slice for one document")
-    slice_cmd.add_argument("--extracted", required=True, type=Path)
+    slice_cmd.add_argument("--output", type=Path, default=None)
     slice_cmd.add_argument("--id", required=True)
 
     sections_cmd = sub.add_parser("sections", help="load, validate, and print the section structure")
@@ -311,14 +311,10 @@ def main(argv: list[str] | None = None) -> int:
 
     commit_cmd = sub.add_parser("understand-commit", help="assemble a validated node from agent enrichment")
     commit_cmd.add_argument("--enrichment", required=True, type=Path)
-    commit_cmd.add_argument("--extracted", required=True, type=Path)
-    commit_cmd.add_argument("--out", default=Path(".tlddr"), type=Path)
-    commit_cmd.add_argument("--sections", type=Path, default=None)
+    commit_cmd.add_argument("--output", type=Path, default=None)
 
     render_cmd = sub.add_parser("understand-render", help="render the vault, index, and triage")
-    render_cmd.add_argument("--work", default=Path(".tlddr"), type=Path)
-    render_cmd.add_argument("--vault", default=Path("vault"), type=Path)
-    render_cmd.add_argument("--sections", type=Path, default=None)
+    render_cmd.add_argument("--output", type=Path, default=None)
 
     dread = sub.add_parser("draft-read", help="serve a node's content/pages for drafting")
     dread.add_argument("--extracted", required=True, type=Path)
@@ -367,19 +363,25 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     if args.command == "extract":
-        run_extract(args.source, args.out, args.benchmark)
+        paths = Paths(resolve_base(args.output))
+        run_extract(args.source, paths.work, args.benchmark)
         return 0
     if args.command == "understand-slice":
-        print(understand_slice(args.extracted, args.id))
+        paths = Paths(resolve_base(args.output))
+        print(understand_slice(paths.extracted, args.id))
         return 0
     if args.command == "sections":
         understand_sections(args.sections)
         return 0
     if args.command == "understand-commit":
-        understand_commit(args.enrichment, args.extracted, args.out, args.sections)
+        paths = Paths(resolve_base(args.output))
+        sections = paths.sections if paths.sections.exists() else None
+        understand_commit(args.enrichment, paths.extracted, paths.work, sections)
         return 0
     if args.command == "understand-render":
-        understand_render(args.work, args.vault, args.sections)
+        paths = Paths(resolve_base(args.output))
+        sections = paths.sections if paths.sections.exists() else None
+        understand_render(paths.work, paths.vault, sections)
         return 0
     if args.command == "draft-read":
         pages = [int(p) for p in args.pages.split(",")] if args.pages else None

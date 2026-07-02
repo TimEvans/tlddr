@@ -25,10 +25,10 @@ def test_main_extract_returns_zero(tmp_path, simple_docx):
     source = tmp_path / "src"
     source.mkdir()
     (source / simple_docx.name).write_bytes(simple_docx.read_bytes())
-    out = tmp_path / "out"
-    code = main(["extract", "--source", str(source), "--out", str(out)])
+    base = tmp_path / "out"
+    code = main(["extract", "--source", str(source), "--output", str(base)])
     assert code == 0
-    assert (out / "extraction-report.md").exists()
+    assert (base / "work" / "extraction-report.md").exists()
 
 
 def test_run_extract_isolates_per_file_failure(tmp_path, simple_docx):
@@ -130,9 +130,9 @@ def test_extract_benchmark_flag_records_stage_row(tmp_path, simple_docx):
     source = tmp_path / "src"
     source.mkdir()
     (source / simple_docx.name).write_bytes(simple_docx.read_bytes())
-    out = tmp_path / "out"
+    base = tmp_path / "out"
     bench_dir = tmp_path / "benchmark"
-    rc = main(["extract", "--source", str(source), "--out", str(out),
+    rc = main(["extract", "--source", str(source), "--output", str(base),
                "--benchmark", str(bench_dir)])
     assert rc == 0
     from tlddr import bench
@@ -146,7 +146,7 @@ def test_extract_without_benchmark_flag_records_nothing(tmp_path, simple_docx):
     source = tmp_path / "src"
     source.mkdir()
     (source / simple_docx.name).write_bytes(simple_docx.read_bytes())
-    out = tmp_path / "out"
-    rc = main(["extract", "--source", str(source), "--out", str(out)])
+    base = tmp_path / "out"
+    rc = main(["extract", "--source", str(source), "--output", str(base)])
     assert rc == 0
     assert not (tmp_path / "benchmark" / "metrics.jsonl").exists()
