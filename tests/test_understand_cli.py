@@ -67,6 +67,31 @@ def test_commit_is_idempotent_on_questions(tmp_path):
     assert len(questions) == 1  # not duplicated on re-run
 
 
+def test_understand_recommit_flips_and_preserves_answered_questions(tmp_path):
+    extracted = tmp_path / "extracted"
+    extracted.mkdir()
+    _write_doc(extracted, "a6")
+    enrichment = {
+        "extracted_id": "a6", "doc_type": "cba", "description": "d",
+        "confidence_interpretation": "high", "related": [],
+        "questions": [],
+    }
+    ep = tmp_path / "a6.enrichment.json"
+    ep.write_text(json.dumps(enrichment))
+    work = tmp_path / "work"
+    work.mkdir()
+    (work / "questions.json").write_text(json.dumps([
+        {"id": "u-1", "raised_by": "understand", "node_id": "a6",
+         "question": "q", "status": "revise_pending"},
+    ]))
+
+    understand_commit(ep, extracted, work)  # re-understand after a revise answer
+
+    questions = {q["id"]: q for q in json.loads((work / "questions.json").read_text())}
+    assert "u-1" in questions                              # preserved, not deleted
+    assert questions["u-1"]["status"] == "revise_applied"  # flipped by the re-pass
+
+
 def test_commit_validates_section_tags_against_spec(tmp_path):
     extracted = tmp_path / "extracted"
     extracted.mkdir()

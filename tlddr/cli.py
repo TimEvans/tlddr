@@ -175,7 +175,10 @@ def understand_commit(enrichment_path: Path, extracted_dir: Path, out_dir: Path,
 
     questions_path = out_dir / "questions.json"
     existing = json.loads(questions_path.read_text()) if questions_path.exists() else []
-    existing = [q for q in existing if q.get("node_id") != node.id]  # replace this node's prior questions
+    # drop only this node's OPEN questions (regenerated fresh below); preserve answered ones
+    # so the _apply_revises call below can flip REVISE_PENDING -> REVISE_APPLIED
+    existing = [q for q in existing
+                if q.get("node_id") != node.id or q.get("status", "open") != "open"]
     existing.extend(q.model_dump(mode="json") for q in questions)
     questions_path.write_text(json.dumps(existing, indent=2))
     _apply_revises(out_dir, lambda q, nid=node.id: q.node_id == nid)
@@ -378,8 +381,9 @@ def assemble(work_dir: Path, out_dir: Path, sections_path: Path,
                      if questions_path.exists() else [])
         pending = [q for q in questions if q.status is QuestionStatus.REVISE_PENDING]
         for q in pending:
+            target = q.section_id or q.node_id or q.claim_id
             print(f"warning: {q.id} is revise_pending with no re-pass applied "
-                  f"(section {q.section_id})")
+                  f"(target {target})")
         repass_log_path = work_dir / "repass_log.json"
         if repass_log_path.exists():
             log = json.loads(repass_log_path.read_text())
