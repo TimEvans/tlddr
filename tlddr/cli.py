@@ -21,7 +21,7 @@ from tlddr.draft.claims import validate_claims, _claim_id
 from tlddr.draft.eval import groundedness_readout
 from tlddr.draft.verify import ingest_verdicts
 from tlddr.draft.assemble import render_published, render_sidecar
-from tlddr.answer import ingest_answers, parse_triage_answers, question_identity
+from tlddr.answer import ingest_answers, parse_triage_answers
 from tlddr import bench
 
 
@@ -261,8 +261,8 @@ def draft_verify_commit(verdicts_path: Path, work_dir: Path) -> None:
     questions_path = work_dir / "questions.json"
     existing = ([Question.model_validate(q) for q in json.loads(questions_path.read_text())]
                 if questions_path.exists() else [])
-    suppress = {question_identity(q) for q in existing if q.status is not QuestionStatus.OPEN}
-    new_qs = ingest_verdicts(verdicts, _load_claims(work_dir), suppress)
+    suppress_ids = {q.id for q in existing if q.status is not QuestionStatus.OPEN}
+    new_qs = ingest_verdicts(verdicts, _load_claims(work_dir), suppress_ids)
     _append_questions(
         work_dir, new_qs,
         drop=lambda q: q.get("raised_by") == "verify" and q.get("status", "open") == "open")

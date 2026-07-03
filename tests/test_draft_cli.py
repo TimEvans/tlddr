@@ -65,10 +65,11 @@ def _commit_claims(tmp_path, base):
 def test_draft_verify_commit_is_idempotent(tmp_path):
     base = _setup(tmp_path)
     _commit_claims(tmp_path, base)
+    claim_id = json.loads((base / "work" / "claims.json").read_text())[0]["id"]
 
     verdicts_file = tmp_path / "verdicts.json"
     verdicts_file.write_text(json.dumps([{
-        "index": 0, "support_level": "unsupported", "contradiction": False,
+        "claim_id": claim_id, "support_level": "unsupported", "contradiction": False,
         "note": "not actually stated",
     }]))
 

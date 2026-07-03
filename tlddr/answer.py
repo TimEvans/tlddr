@@ -3,19 +3,6 @@ import re
 from tlddr.models import Question, Disposition, QuestionStatus
 
 
-def _normalize(text: str) -> str:
-    """Fold case and collapse all whitespace so trivial rephrasings compare equal."""
-    return " ".join(text.lower().split())
-
-
-def question_identity(q: Question) -> tuple[str, str, str]:
-    """Stable identity for dedup: same stage + same target + same (normalized) text."""
-    # Identity target intentionally differs from worklist routing target (node_id first).
-    # raised_by is part of the tuple, so cross-stage identities remain unambiguous.
-    target = q.section_id or q.node_id or ""
-    return (q.raised_by, target, _normalize(q.question))
-
-
 def build_worklist(questions: list[Question]) -> dict:
     """Group revise-questions by their re-pass target (dedup), joining guidance."""
     sections: dict[str, dict] = {}

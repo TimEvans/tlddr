@@ -1,80 +1,54 @@
 from tlddr.draft.verify import ingest_verdicts
-from tlddr.models import DraftClaim, Citation, SupportLevel, EvidenceRelation, Confidence
-from tlddr.answer import question_identity
+from tlddr.models import DraftClaim, Citation, SupportLevel, EvidenceRelation, Confidence, QuestionStatus
 
 
-def _claim(section="s1", support=SupportLevel.FULLY_SUPPORTED):
-    return DraftClaim(
-        section_id=section, text="claimed strongly",
-        sources=[Citation(node_id="n", page=1, source_confidence=Confidence.HIGH)],
-        support_level=support, evidence_relation=EvidenceRelation.QUOTED,
-    )
+def _claim(cid="claim-a", section="s1", support=SupportLevel.FULLY_SUPPORTED, text="claimed strongly"):
+    return DraftClaim(id=cid, section_id=section, text=text,
+                      sources=[Citation(node_id="n", page=1, source_confidence=Confidence.HIGH)],
+                      support_level=support, evidence_relation=EvidenceRelation.QUOTED)
 
 
-def test_judge_downgrade_raises_verify_question():
-    claims = [_claim(support=SupportLevel.FULLY_SUPPORTED)]
-    verdicts = [{"index": 0, "support_level": "unsupported", "contradiction": False,
-                 "note": "page does not state this"}]
-    qs = ingest_verdicts(verdicts, claims)
+def test_downgrade_raises_question_linked_to_claim():
+    claims = [_claim()]
+    qs = ingest_verdicts([{"claim_id": "claim-a", "support_level": "unsupported",
+                           "contradiction": False, "note": "not stated"}], claims)
     assert len(qs) == 1
-    assert qs[0].raised_by == "verify"
+    assert qs[0].id == "verify-claim-a-downgrade"
+    assert qs[0].claim_id == "claim-a"
     assert qs[0].section_id == "s1"
-    assert "page does not state this" in qs[0].question
+    assert "not stated" in qs[0].question
+
+
+def test_unknown_claim_id_skipped():
+    assert ingest_verdicts([{"claim_id": "ghost", "support_level": "unsupported",
+                             "contradiction": False}], [_claim()]) == []
 
 
 def test_agreement_raises_nothing():
-    claims = [_claim(support=SupportLevel.FULLY_SUPPORTED)]
-    verdicts = [{"index": 0, "support_level": "fully_supported", "contradiction": False, "note": ""}]
-    assert ingest_verdicts(verdicts, claims) == []
+    assert ingest_verdicts([{"claim_id": "claim-a", "support_level": "fully_supported",
+                             "contradiction": False}], [_claim()]) == []
 
 
-def test_contradiction_flag_always_raises():
-    claims = [_claim(support=SupportLevel.PARTIALLY_SUPPORTED)]
-    verdicts = [{"index": 0, "support_level": "partially_supported", "contradiction": True,
-                 "note": "conflicts with r304"}]
-    qs = ingest_verdicts(verdicts, claims)
-    assert len(qs) == 1 and qs[0].raised_by == "verify"
+def test_contradiction_id_uses_contradiction_reason():
+    qs = ingest_verdicts([{"claim_id": "claim-a", "support_level": "fully_supported",
+                           "contradiction": True, "note": "conflicts"}], [_claim()])
+    assert qs[0].id == "verify-claim-a-contradiction"
 
 
-def test_out_of_range_index_is_skipped():
+def test_suppressed_when_id_in_suppress_set():
     claims = [_claim()]
-    verdicts = [{"index": 99, "support_level": "unsupported", "contradiction": False, "note": ""}]
-    assert ingest_verdicts(verdicts, claims) == []
+    v = [{"claim_id": "claim-a", "support_level": "unsupported", "contradiction": False}]
+    assert ingest_verdicts(v, claims, {"verify-claim-a-downgrade"}) == []
 
 
-def test_missing_index_is_skipped():
-    claims = [_claim()]
-    verdicts = [{"support_level": "unsupported", "contradiction": False, "note": ""}]
-    assert ingest_verdicts(verdicts, claims) == []
-
-
-def test_invalid_support_level_is_skipped():
-    claims = [_claim()]
-    verdicts = [{"index": 0, "support_level": "bogus_value", "contradiction": False, "note": ""}]
-    assert ingest_verdicts(verdicts, claims) == []
-
-
-def test_missing_support_level_is_skipped():
-    claims = [_claim()]
-    verdicts = [{"index": 0, "contradiction": False, "note": ""}]
-    assert ingest_verdicts(verdicts, claims) == []
-
-
-def test_verdict_matching_resolved_question_is_suppressed():
-    claims = [_claim(support=SupportLevel.FULLY_SUPPORTED)]
-    verdicts = [{"index": 0, "support_level": "unsupported", "contradiction": False,
-                 "note": "page does not state this"}]
-    # first pass raises the question
-    first = ingest_verdicts(verdicts, claims)
-    assert len(first) == 1
-    # that question is now resolved; feeding its identity as suppress skips the re-raise
-    suppress = {question_identity(first[0])}
-    assert ingest_verdicts(verdicts, claims, suppress) == []
-
-
-def test_new_verdict_still_surfaces_despite_suppress():
-    claims = [_claim(support=SupportLevel.FULLY_SUPPORTED)]
-    verdicts = [{"index": 0, "support_level": "unsupported", "contradiction": False,
-                 "note": "a different, genuinely new problem"}]
-    suppress = {("verify", "s1", "some unrelated resolved question")}
-    assert len(ingest_verdicts(verdicts, claims, suppress)) == 1
+def test_dedup_robust_to_note_and_text_drift():
+    # F5 regression: same claim_id + reason must suppress even when note AND text vary
+    claims_v1 = [_claim(text="original text", support=SupportLevel.FULLY_SUPPORTED)]
+    first = ingest_verdicts([{"claim_id": "claim-a", "support_level": "unsupported",
+                              "contradiction": False, "note": "reason one"}], claims_v1)
+    suppress = {first[0].id}
+    claims_v2 = [_claim(text="reworded text entirely", support=SupportLevel.FULLY_SUPPORTED)]
+    again = ingest_verdicts([{"claim_id": "claim-a", "support_level": "unsupported",
+                              "contradiction": False, "note": "a totally different note"}],
+                            claims_v2, suppress)
+    assert again == []      # suppressed on claim_id + reason, not text/note

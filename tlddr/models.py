@@ -120,6 +120,7 @@ class Question(BaseModel):
     raised_by: str
     node_id: str | None = None
     section_id: str | None = None
+    claim_id: str | None = None        # verify questions link to their claim
     question: str
     blocks: list[str] = Field(default_factory=list)
     blocking: bool = False
