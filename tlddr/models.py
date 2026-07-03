@@ -88,6 +88,11 @@ class EvidenceRelation(str, Enum):
     INFERRED = "inferred"
 
 
+class Disposition(str, Enum):
+    REVISE = "revise"      # answer routes to a re-pass
+    ACCEPT = "accept"      # acknowledged finding; no re-pass; disclosed as a caveat
+
+
 class Citation(BaseModel):
     node_id: str
     page: int
@@ -111,6 +116,8 @@ class Question(BaseModel):
     blocks: list[str] = Field(default_factory=list)
     blocking: bool = False
     answer: str | None = None
+    disposition: Disposition | None = None
+    resolved: bool = False
 
 
 class Node(BaseModel):
