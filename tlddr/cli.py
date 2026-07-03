@@ -276,6 +276,16 @@ def _format_worklist(worklist: dict) -> str:
     return "\n".join(lines)
 
 
+def _bump_repass_log(work_dir: Path, worklist: dict) -> None:
+    path = work_dir / "repass_log.json"
+    log = json.loads(path.read_text()) if path.exists() else {}
+    for item in worklist["sections"]:
+        log[item["section_id"]] = log.get(item["section_id"], 0) + 1
+    for item in worklist["nodes"]:
+        log[item["node_id"]] = log.get(item["node_id"], 0) + 1
+    path.write_text(json.dumps(log, indent=2))
+
+
 def answer_commit(answers_path: Path | None, triage_path: Path | None, work_dir: Path,
                   sections_path: Path | None = None, vault_dir: Path | None = None) -> None:
     questions_path = work_dir / "questions.json"
@@ -294,6 +304,7 @@ def answer_commit(answers_path: Path | None, triage_path: Path | None, work_dir:
     questions_path.write_text(
         json.dumps([q.model_dump(mode="json") for q in updated], indent=2))
     (work_dir / "worklist.json").write_text(json.dumps(worklist, indent=2))
+    _bump_repass_log(work_dir, worklist)
     print(_format_worklist(worklist))
 
     if vault_dir is not None:
@@ -313,6 +324,13 @@ def assemble(work_dir: Path, out_dir: Path, sections_path: Path,
         questions_path = work_dir / "questions.json"
         questions = ([Question.model_validate(q) for q in json.loads(questions_path.read_text())]
                      if questions_path.exists() else [])
+        repass_log_path = work_dir / "repass_log.json"
+        if repass_log_path.exists():
+            log = json.loads(repass_log_path.read_text())
+            for target, count in sorted(log.items()):
+                if count >= 3:
+                    print(f"warning: '{target}' has cycled {count} times "
+                          f"through the answer loop")
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "report.md").write_text(render_published(sections, claims))
         (out_dir / "report_comments.md").write_text(render_sidecar(sections, claims, questions))

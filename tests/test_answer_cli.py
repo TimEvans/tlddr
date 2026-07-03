@@ -76,3 +76,22 @@ def test_answer_commit_reports_unknown_id(tmp_path, capsys):
     main(["answer-commit", "--answers", str(answers), "--output", str(base)])
     assert "ghost" in capsys.readouterr().out
     assert _load_qs(base)[0]["resolved"] is False
+
+
+def test_repass_log_warns_after_three_cycles(tmp_path, capsys):
+    base = _work_with_questions(tmp_path, [
+        {"id": "v-1", "raised_by": "verify", "section_id": "s1", "question": "Fix this?"},
+    ])
+    answers = tmp_path / "answers.json"
+    answers.write_text(json.dumps([{"id": "v-1", "disposition": "revise", "answer": "redo"}]))
+
+    # three answer-commit rounds against the same section
+    for _ in range(3):
+        main(["answer-commit", "--answers", str(answers), "--output", str(base)])
+
+    log = json.loads((base / "work" / "repass_log.json").read_text())
+    assert log["s1"] == 3
+
+    capsys.readouterr()                       # clear
+    main(["assemble", "--output", str(base)])
+    assert "cycled 3 times" in capsys.readouterr().out
