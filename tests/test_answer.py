@@ -1,21 +1,19 @@
-from tlddr.models import Question, Disposition
+from tlddr.models import Question, Disposition, QuestionStatus
 from tlddr.answer import question_identity, ingest_answers, build_worklist, parse_triage_answers
 
 
-def test_question_answer_fields_default():
+def test_question_status_defaults_open():
     q = Question(id="q-1", raised_by="verify", section_id="s1", question="is this right?")
-    assert q.disposition is None
-    assert q.resolved is False
+    assert q.status is QuestionStatus.OPEN
     assert q.answer is None
 
 
-def test_question_round_trips_resolved_answer():
-    q = Question(id="q-1", raised_by="verify", section_id="s1", question="is this right?",
-                 answer="Yes, keep it.", disposition=Disposition.ACCEPT, resolved=True)
+def test_question_round_trips_status_and_answer():
+    q = Question(id="q-1", raised_by="verify", section_id="s1", question="q?",
+                 answer="Yes.", status=QuestionStatus.ACCEPTED)
     restored = Question.model_validate_json(q.model_dump_json())
-    assert restored.disposition is Disposition.ACCEPT
-    assert restored.resolved is True
-    assert restored.answer == "Yes, keep it."
+    assert restored.status is QuestionStatus.ACCEPTED
+    assert restored.answer == "Yes."
 
 
 def test_identity_ignores_case_and_whitespace():
@@ -43,16 +41,13 @@ def _q(id, raised_by, question="q?", section_id=None, node_id=None, blocking=Fal
                     section_id=section_id, node_id=node_id, blocking=blocking)
 
 
-def test_valid_answer_sets_fields_and_clears_blocking():
+def test_valid_answer_sets_status_and_worklist():
     qs = [_q("v-1", "verify", section_id="s1", blocking=True)]
     records = [{"id": "v-1", "disposition": "revise", "answer": "Keep it, cite p.47."}]
     updated, worklist, dropped = ingest_answers(records, qs)
     assert dropped == []
-    q = updated[0]
-    assert q.resolved is True
-    assert q.disposition is Disposition.REVISE
-    assert q.answer == "Keep it, cite p.47."
-    assert q.blocking is False
+    assert updated[0].status is QuestionStatus.REVISE_PENDING
+    assert updated[0].answer == "Keep it, cite p.47."
 
 
 def test_unknown_id_is_dropped():
@@ -60,7 +55,7 @@ def test_unknown_id_is_dropped():
     records = [{"id": "nope", "disposition": "accept", "answer": "x"}]
     updated, worklist, dropped = ingest_answers(records, qs)
     assert len(dropped) == 1 and "nope" in dropped[0]
-    assert updated[0].resolved is False
+    assert updated[0].status is QuestionStatus.OPEN
 
 
 def test_invalid_disposition_is_dropped():
@@ -68,7 +63,7 @@ def test_invalid_disposition_is_dropped():
     records = [{"id": "v-1", "disposition": "maybe", "answer": "x"}]
     updated, worklist, dropped = ingest_answers(records, qs)
     assert len(dropped) == 1 and "v-1" in dropped[0]
-    assert updated[0].resolved is False
+    assert updated[0].status is QuestionStatus.OPEN
 
 
 def test_verify_and_draft_route_to_section():
@@ -93,11 +88,11 @@ def test_understand_routes_to_node():
     assert worklist["nodes"][0]["guidance"] == "It supersedes r304."
 
 
-def test_accept_does_not_enter_worklist():
+def test_accept_sets_accepted_status_and_no_worklist():
     qs = [_q("v-1", "verify", section_id="s1")]
-    records = [{"id": "v-1", "disposition": "accept", "answer": "Acceptable nit."}]
-    updated, worklist, _ = ingest_answers(records, qs)
-    assert updated[0].resolved is True
+    updated, worklist, _ = ingest_answers(
+        [{"id": "v-1", "disposition": "accept", "answer": "Fine."}], qs)
+    assert updated[0].status is QuestionStatus.ACCEPTED
     assert worklist["sections"] == [] and worklist["nodes"] == []
 
 

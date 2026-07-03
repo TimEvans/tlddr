@@ -1,5 +1,5 @@
 from tlddr.models import (
-    DraftClaim, Section, Question, SupportLevel, EvidenceRelation, Confidence, Disposition,
+    DraftClaim, Section, Question, SupportLevel, EvidenceRelation, Confidence, QuestionStatus,
 )
 from tlddr.draft.eval import no_evidence_sections
 
@@ -56,9 +56,8 @@ def render_sidecar(sections: list[Section], claims: list[DraftClaim],
                 lines.append(f"- '{cl.text[:80]}' (from {srcs})")
 
         section_qs = [q for q in questions if q.section_id == s.id]
-        open_qs = [q for q in section_qs if not q.resolved]
-        caveats = [q for q in section_qs
-                   if q.resolved and q.disposition is Disposition.ACCEPT]
+        open_qs = [q for q in section_qs if q.status is QuestionStatus.OPEN]
+        caveats = [q for q in section_qs if q.status is QuestionStatus.ACCEPTED]
         if open_qs:
             lines.append("**Open questions:**")
             lines += [f"- ({q.raised_by}) {q.question}" for q in open_qs]

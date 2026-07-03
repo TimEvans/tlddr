@@ -1,7 +1,7 @@
 from tlddr.understand.render import (
     render_index, render_triage, section_coverage, isolated_nodes,
 )
-from tlddr.models import Node, Question, Confidence, Triage, Section, Edge, RelationType, Disposition
+from tlddr.models import Node, Question, Confidence, Triage, Section, Edge, RelationType, QuestionStatus
 
 
 def _node(id, triage):
@@ -93,7 +93,7 @@ def test_triage_separates_open_and_resolved():
                       question="Open question here?")
     resolved_q = Question(id="v-2", raised_by="verify", section_id="s1",
                           question="Resolved question here?", answer="Yes, keep it.",
-                          disposition=Disposition.ACCEPT, resolved=True)
+                          status=QuestionStatus.ACCEPTED)
     md = render_triage(nodes, [open_q, resolved_q])
 
     assert "## Open questions" in md
@@ -105,7 +105,7 @@ def test_triage_separates_open_and_resolved():
     assert "> answer:" in open_block
     assert "Resolved question here?" not in open_block   # resolved not in Open
 
-    assert "(accept)" in resolved_block
+    assert "(accepted)" in resolved_block
     assert "Yes, keep it." in resolved_block
 
 
@@ -125,7 +125,7 @@ def test_resolving_blocking_question_deescalates_node():
     # ...and once resolved, it drops out of Red (de-escalation is visible)
     resolved = Question(id="u-1", raised_by="understand", node_id="a",
                         question="Blocked on which spec?", blocking=False,
-                        answer="Spec v3.", disposition=Disposition.REVISE, resolved=True)
+                        answer="Spec v3.", status=QuestionStatus.REVISE_PENDING)
     green_md = render_triage([node], [resolved])
     green_red_block = green_md.split("## Red")[1].split("## Amber")[0]
     assert "[[a]]" not in green_red_block

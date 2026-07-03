@@ -93,6 +93,13 @@ class Disposition(str, Enum):
     ACCEPT = "accept"      # acknowledged finding; no re-pass; disclosed as a caveat
 
 
+class QuestionStatus(str, Enum):
+    OPEN = "open"                      # unanswered
+    ACCEPTED = "accepted"              # answered accept — terminal; disclosed as a caveat
+    REVISE_PENDING = "revise_pending"  # answered revise — awaiting its re-pass
+    REVISE_APPLIED = "revise_applied"  # re-pass executed — terminal
+
+
 class Citation(BaseModel):
     node_id: str
     page: int
@@ -117,8 +124,7 @@ class Question(BaseModel):
     blocks: list[str] = Field(default_factory=list)
     blocking: bool = False
     answer: str | None = None
-    disposition: Disposition | None = None
-    resolved: bool = False
+    status: QuestionStatus = QuestionStatus.OPEN
 
 
 class Node(BaseModel):

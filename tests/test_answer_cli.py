@@ -33,9 +33,8 @@ def test_answer_commit_resolves_and_writes_worklist(tmp_path):
     assert main(["answer-commit", "--answers", str(answers), "--output", str(base)]) == 0
 
     qs = {q["id"]: q for q in _load_qs(base)}
-    assert qs["v-1"]["resolved"] is True and qs["v-1"]["disposition"] == "revise"
-    assert qs["v-1"]["blocking"] is False              # cleared
-    assert qs["v-2"]["disposition"] == "accept"
+    assert qs["v-1"]["status"] == "revise_pending"
+    assert qs["v-2"]["status"] == "accepted"
 
     worklist = json.loads((base / "work" / "worklist.json").read_text())
     assert [s["section_id"] for s in worklist["sections"]] == ["s1"]   # revise only
@@ -51,7 +50,7 @@ def test_answer_commit_triage_mode(tmp_path):
 
     assert main(["answer-commit", "--triage", str(triage), "--output", str(base)]) == 0
     qs = {q["id"]: q for q in _load_qs(base)}
-    assert qs["v-1"]["resolved"] is True
+    assert qs["v-1"]["status"] == "revise_pending"
     assert qs["v-1"]["answer"] == "Cite p.47."
 
 
@@ -64,7 +63,7 @@ def test_answer_commit_rerenders_triage_with_resolved(tmp_path):
     main(["answer-commit", "--answers", str(answers), "--output", str(base)])
     triage_md = (base / "vault" / "_triage.md").read_text()
     assert "## Resolved questions" in triage_md
-    assert "(accept)" in triage_md
+    assert "(accepted)" in triage_md
 
 
 def test_answer_commit_reports_unknown_id(tmp_path, capsys):
@@ -75,7 +74,7 @@ def test_answer_commit_reports_unknown_id(tmp_path, capsys):
     answers.write_text(json.dumps([{"id": "ghost", "disposition": "accept", "answer": "x"}]))
     main(["answer-commit", "--answers", str(answers), "--output", str(base)])
     assert "ghost" in capsys.readouterr().out
-    assert _load_qs(base)[0]["resolved"] is False
+    assert _load_qs(base)[0]["status"] == "open"
 
 
 def test_repass_log_warns_after_three_cycles(tmp_path, capsys):

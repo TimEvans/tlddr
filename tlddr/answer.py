@@ -1,6 +1,6 @@
 import re
 
-from tlddr.models import Question, Disposition
+from tlddr.models import Question, Disposition, QuestionStatus
 
 
 def _normalize(text: str) -> str:
@@ -57,9 +57,8 @@ def ingest_answers(records: list[dict],
             dropped.append(f"'{qid}': invalid disposition '{r.get('disposition')}'")
             continue
         q.answer = r.get("answer")
-        q.disposition = disposition
-        q.resolved = True
-        q.blocking = False
+        q.status = (QuestionStatus.ACCEPTED if disposition is Disposition.ACCEPT
+                    else QuestionStatus.REVISE_PENDING)
         if disposition is Disposition.REVISE:
             revised.append(q)
     return questions, build_worklist(revised), dropped

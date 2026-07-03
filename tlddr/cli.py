@@ -10,7 +10,7 @@ from tlddr.extract.base import ExtractContext
 from tlddr.extract.router import route
 from tlddr.extract.report import render_report
 from tlddr.ids import doc_id, sha256_file
-from tlddr.models import ExtractedDoc, Node, Question, SignalType, Section, DraftClaim
+from tlddr.models import ExtractedDoc, Node, Question, QuestionStatus, SignalType, Section, DraftClaim
 from tlddr.understand.slice import build_slice
 from tlddr.understand.commit import build_node
 from tlddr.understand.sections import load_sections, section_ids
@@ -261,11 +261,11 @@ def draft_verify_commit(verdicts_path: Path, work_dir: Path) -> None:
     questions_path = work_dir / "questions.json"
     existing = ([Question.model_validate(q) for q in json.loads(questions_path.read_text())]
                 if questions_path.exists() else [])
-    suppress = {question_identity(q) for q in existing if q.resolved}
+    suppress = {question_identity(q) for q in existing if q.status is not QuestionStatus.OPEN}
     new_qs = ingest_verdicts(verdicts, _load_claims(work_dir), suppress)
     _append_questions(
         work_dir, new_qs,
-        drop=lambda q: q.get("raised_by") == "verify" and not q.get("resolved"))
+        drop=lambda q: q.get("raised_by") == "verify" and q.get("status", "open") == "open")
     print(f"raised {len(new_qs)} verify questions")
 
 

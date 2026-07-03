@@ -1,7 +1,7 @@
 from tlddr.draft.assemble import render_published, render_sidecar
 from tlddr.models import (
     Section, DraftClaim, Citation, Question, SupportLevel, EvidenceRelation,
-    Confidence, Disposition,
+    Confidence, QuestionStatus,
 )
 
 
@@ -53,11 +53,12 @@ def test_sidecar_shows_accepted_as_caveat_hides_revise():
     sections = [Section(id="s1", title="Overview")]
     claims = [_s1_claim()]
     questions = [
-        Question(id="v-open", raised_by="verify", section_id="s1", question="Still open?"),
+        Question(id="v-open", raised_by="verify", section_id="s1", question="Still open?",
+                 status=QuestionStatus.OPEN),
         Question(id="v-acc", raised_by="verify", section_id="s1", question="Minor nit?",
-                 answer="Acceptable.", disposition=Disposition.ACCEPT, resolved=True),
+                 answer="Acceptable.", status=QuestionStatus.ACCEPTED),
         Question(id="v-rev", raised_by="verify", section_id="s1", question="Was wrong?",
-                 answer="Fixed it.", disposition=Disposition.REVISE, resolved=True),
+                 answer="Fixed it.", status=QuestionStatus.REVISE_PENDING),
     ]
     md = render_sidecar(sections, claims, questions)
     assert "Open questions" in md and "Still open?" in md

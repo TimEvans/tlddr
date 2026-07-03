@@ -1,4 +1,4 @@
-from tlddr.models import Node, Question, Triage, Section
+from tlddr.models import Node, Question, QuestionStatus, Triage, Section
 from tlddr.understand.triage import derive_triage
 
 _GROUP_ORDER = [Triage.RED, Triage.AMBER, Triage.GREEN]
@@ -29,7 +29,8 @@ def isolated_nodes(nodes: list[Node]) -> list[str]:
 def _display_triage(node: Node, questions: list[Question]) -> Triage:
     """Triage as it stands now: re-derive from the node's still-open questions so a
     resolved blocking question visibly de-escalates the node (never mutates stored state)."""
-    node_qs = [q for q in questions if q.node_id == node.id and not q.resolved]
+    node_qs = [q for q in questions
+              if q.node_id == node.id and q.status is QuestionStatus.OPEN]
     return derive_triage(node.confidence_extraction, node.confidence_interpretation, node_qs)
 
 
@@ -63,8 +64,8 @@ def render_triage(nodes: list[Node], questions: list[Question],
         lines.append("None.")
     lines.append("")
 
-    open_qs = [q for q in questions if not q.resolved]
-    resolved_qs = [q for q in questions if q.resolved]
+    open_qs = [q for q in questions if q.status is QuestionStatus.OPEN]
+    resolved_qs = [q for q in questions if q.status is not QuestionStatus.OPEN]
 
     lines.append("## Open questions")
     if not open_qs:
@@ -81,8 +82,7 @@ def render_triage(nodes: list[Node], questions: list[Question],
         lines.append("## Resolved questions")
         for q in resolved_qs:
             target = f" ([[{q.node_id}]])" if q.node_id else ""
-            disposition = q.disposition.value if q.disposition else "resolved"
-            lines.append(f"### {q.id} ({disposition}){target}")
+            lines.append(f"### {q.id} ({q.status.value}){target}")
             lines.append(q.question)
             lines.append(f"> answer: {q.answer or ''}")
             lines.append("")
