@@ -197,14 +197,16 @@ or the slot parser):
 
 New deterministic CLI (tested Python; exact signatures fixed in the plan):
 
-- `tlddr answer-commit --answers <f> --work <dir> [--sections <f>] [--vault <dir>]` — validate
-  answer records (id resolves to a known question; `disposition ∈ {revise, accept}`; unknown ids
-  reported and dropped), set `answer` / `disposition` / `resolved=true`, flip `blocking→false` on
-  resolved questions, write the deduped `worklist.json` from this batch's `revise` targets, and
-  print it. Re-renders `_triage.md` (Open/Resolved) when `--vault` is given.
-- `tlddr answer-parse --triage <f> [--out <f>]` — the lightweight fallback: read filled
-  `> answer:` slots (with `[revise]` / `[accept]` tags) into the answer-record contract. (May be
-  folded into `answer-commit` as a `--triage` alternative input; settled in the plan.)
+- `tlddr answer-commit (--answers <f> | --triage <f>) --work <dir> [--sections <f>] [--vault <dir>]`
+  — validate answer records (id resolves to a known question; `disposition ∈ {revise, accept}`;
+  unknown ids reported and dropped), set `answer` / `disposition` / `resolved=true`, flip
+  `blocking→false` on resolved questions, write the deduped `worklist.json` from this batch's
+  `revise` targets, and print it. Re-renders `_triage.md` (Open/Resolved) when `--vault` is given.
+  Two mutually-exclusive input modes converge on the same validated record path (AD1):
+  - `--answers <f>` — structured answer records (the review-session skill or a retrieval agent).
+  - `--triage <f>` — the lightweight fallback: parse filled `> answer:` slots from a `_triage.md`
+    (with leading `[revise]` / `[accept]` tags) into the same answer records. A slot with no
+    tag, or an unrecognized tag, is reported and skipped (machine-trust — no silent default).
 
 Changed CLI:
 
