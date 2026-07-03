@@ -1,5 +1,6 @@
 from tlddr.draft.verify import ingest_verdicts
 from tlddr.models import DraftClaim, Citation, SupportLevel, EvidenceRelation, Confidence
+from tlddr.answer import question_identity
 
 
 def _claim(section="s1", support=SupportLevel.FULLY_SUPPORTED):
@@ -57,3 +58,23 @@ def test_missing_support_level_is_skipped():
     claims = [_claim()]
     verdicts = [{"index": 0, "contradiction": False, "note": ""}]
     assert ingest_verdicts(verdicts, claims) == []
+
+
+def test_verdict_matching_resolved_question_is_suppressed():
+    claims = [_claim(support=SupportLevel.FULLY_SUPPORTED)]
+    verdicts = [{"index": 0, "support_level": "unsupported", "contradiction": False,
+                 "note": "page does not state this"}]
+    # first pass raises the question
+    first = ingest_verdicts(verdicts, claims)
+    assert len(first) == 1
+    # that question is now resolved; feeding its identity as suppress skips the re-raise
+    suppress = {question_identity(first[0])}
+    assert ingest_verdicts(verdicts, claims, suppress) == []
+
+
+def test_new_verdict_still_surfaces_despite_suppress():
+    claims = [_claim(support=SupportLevel.FULLY_SUPPORTED)]
+    verdicts = [{"index": 0, "support_level": "unsupported", "contradiction": False,
+                 "note": "a different, genuinely new problem"}]
+    suppress = {("verify", "s1", "some unrelated resolved question")}
+    assert len(ingest_verdicts(verdicts, claims, suppress)) == 1
