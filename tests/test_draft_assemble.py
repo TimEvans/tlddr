@@ -1,7 +1,7 @@
 from tlddr.draft.assemble import render_published, render_sidecar
 from tlddr.models import (
     Section, DraftClaim, Citation, Question, SupportLevel, EvidenceRelation,
-    Confidence,
+    Confidence, Disposition,
 )
 
 
@@ -39,3 +39,27 @@ def test_sidecar_lists_provenance_warnings_inferences_and_no_evidence():
     assert "low" in out.lower()                                     # low-confidence warning
     assert "judge downgrade on claim 1" in out                      # open question
     assert "Gaps" in out and "insufficient evidence" in out.lower() # s2 no-evidence
+
+
+def _s1_claim():
+    from tlddr.models import DraftClaim, Citation, SupportLevel, EvidenceRelation, Confidence
+    return DraftClaim(section_id="s1", text="A claim.",
+                      sources=[Citation(node_id="n", page=1, source_confidence=Confidence.HIGH)],
+                      support_level=SupportLevel.FULLY_SUPPORTED,
+                      evidence_relation=EvidenceRelation.QUOTED)
+
+
+def test_sidecar_shows_accepted_as_caveat_hides_revise():
+    sections = [Section(id="s1", title="Overview")]
+    claims = [_s1_claim()]
+    questions = [
+        Question(id="v-open", raised_by="verify", section_id="s1", question="Still open?"),
+        Question(id="v-acc", raised_by="verify", section_id="s1", question="Minor nit?",
+                 answer="Acceptable.", disposition=Disposition.ACCEPT, resolved=True),
+        Question(id="v-rev", raised_by="verify", section_id="s1", question="Was wrong?",
+                 answer="Fixed it.", disposition=Disposition.REVISE, resolved=True),
+    ]
+    md = render_sidecar(sections, claims, questions)
+    assert "Open questions" in md and "Still open?" in md
+    assert "Disclosed caveats" in md and "Minor nit?" in md and "Acceptable." in md
+    assert "Was wrong?" not in md          # resolved-revise hidden
