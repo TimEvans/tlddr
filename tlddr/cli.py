@@ -17,7 +17,7 @@ from tlddr.understand.sections import load_sections, section_ids
 from tlddr.understand.node_render import render_node_markdown
 from tlddr.understand.render import render_index, render_triage
 from tlddr.draft.read import build_read
-from tlddr.draft.claims import validate_claims
+from tlddr.draft.claims import validate_claims, _claim_id
 from tlddr.draft.eval import groundedness_readout
 from tlddr.draft.verify import ingest_verdicts
 from tlddr.draft.assemble import render_published, render_sidecar
@@ -236,6 +236,9 @@ def draft_commit(claims_path: Path, extracted_dir: Path, work_dir: Path,
     submitted_sections = {r["section_id"] for r in raw}
     committed = [c for c in _load_claims(work_dir) if c.section_id not in submitted_sections]
     committed.extend(valid)
+    for c in committed:
+        if not c.id:
+            c.id = _claim_id(c.section_id, c.text)
     seen: dict[str, int] = {}
     for c in committed:
         if c.id in seen:
