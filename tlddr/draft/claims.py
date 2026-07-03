@@ -1,7 +1,15 @@
+import hashlib
+
 from tlddr.models import (
     ExtractedDoc, Node, DraftClaim, Citation, SupportLevel, EvidenceRelation, Question,
 )
 from tlddr.draft.pages import citable_pages
+
+
+def _claim_id(section_id: str, text: str) -> str:
+    """Durable surrogate id, minted once from initial content; stored and frozen thereafter."""
+    digest = hashlib.sha1(f"{section_id}\0{text}".encode()).hexdigest()[:8]
+    return f"claim-{digest}"
 
 
 def validate_claims(raw_claims: list[dict],
@@ -37,6 +45,7 @@ def validate_claims(raw_claims: list[dict],
             ))
             continue
         valid.append(DraftClaim(
+            id=raw.get("id") or _claim_id(section_id, raw["text"]),
             section_id=section_id, text=raw["text"], sources=citations,
             support_level=SupportLevel(raw["support_level"]),
             evidence_relation=EvidenceRelation(raw["evidence_relation"]),

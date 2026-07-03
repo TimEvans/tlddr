@@ -1,8 +1,22 @@
-from tlddr.draft.claims import validate_claims
+import pytest
+from tlddr.draft.claims import validate_claims, _claim_id
 from tlddr.models import (
     ExtractedDoc, Node, PageProvenance, SignalType, ExtractMethod, Confidence, Triage,
     SupportLevel, EvidenceRelation,
 )
+
+
+@pytest.fixture
+def _docs_and_nodes():
+    doc = ExtractedDoc(id="r518", source_path="/x", source_sha256="a",
+                       signal_type=SignalType.MIXED, raw_title="R518",
+                       content="--- page 12 ---\ndesign life 25 years",
+                       pages=[PageProvenance(page=12, method=ExtractMethod.PYMUPDF_TEXT, has_text_layer=True)],
+                       extractor="pdf")
+    node = Node(id="r518", extracted_id="r518", title="R518", doc_type="report", description="d",
+                confidence_extraction=Confidence.HIGH, confidence_interpretation=Confidence.HIGH,
+                triage=Triage.GREEN, report_sections=["s1"])
+    return {"r518": doc}, {"r518": node}
 
 
 def _doc(id="r518"):
@@ -86,3 +100,28 @@ def test_no_known_section_ids_skips_section_validation():
         [raw], docs={"r518": _doc()}, nodes={"r518": _node()})
     assert len(claims) == 1
     assert findings == []
+
+
+def test_claim_id_is_deterministic_from_section_and_text():
+    a = _claim_id("s1", "Design life is 25 years.")
+    b = _claim_id("s1", "Design life is 25 years.")
+    assert a == b and a.startswith("claim-")
+    assert _claim_id("s1", "other") != a
+
+
+def test_validate_claims_assigns_id_when_absent(_docs_and_nodes):
+    docs, nodes = _docs_and_nodes
+    raw = [{"section_id": "s1", "text": "Design life is 25 years.",
+            "support_level": "fully_supported", "evidence_relation": "quoted",
+            "sources": [{"node_id": "r518", "page": 12}]}]
+    valid, _ = validate_claims(raw, docs, nodes, {"s1"})
+    assert valid[0].id == _claim_id("s1", "Design life is 25 years.")
+
+
+def test_validate_claims_preserves_supplied_id(_docs_and_nodes):
+    docs, nodes = _docs_and_nodes
+    raw = [{"id": "claim-fixed", "section_id": "s1", "text": "Design life is 25 years.",
+            "support_level": "fully_supported", "evidence_relation": "quoted",
+            "sources": [{"node_id": "r518", "page": 12}]}]
+    valid, _ = validate_claims(raw, docs, nodes, {"s1"})
+    assert valid[0].id == "claim-fixed"

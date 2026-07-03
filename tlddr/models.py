@@ -100,6 +100,7 @@ class Citation(BaseModel):
 
 
 class DraftClaim(BaseModel):
+    id: str = ""                       # durable surrogate, assigned at first commit, frozen
     section_id: str
     text: str
     sources: list[Citation] = Field(default_factory=list)

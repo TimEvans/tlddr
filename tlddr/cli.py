@@ -236,6 +236,13 @@ def draft_commit(claims_path: Path, extracted_dir: Path, work_dir: Path,
     submitted_sections = {r["section_id"] for r in raw}
     committed = [c for c in _load_claims(work_dir) if c.section_id not in submitted_sections]
     committed.extend(valid)
+    seen: dict[str, int] = {}
+    for c in committed:
+        if c.id in seen:
+            seen[c.id] += 1
+            c.id = f"{c.id}-{seen[c.id]}"
+        else:
+            seen[c.id] = 1
     (work_dir / "claims.json").write_text(
         json.dumps([c.model_dump(mode="json") for c in committed], indent=2))
     for section in submitted_sections:
