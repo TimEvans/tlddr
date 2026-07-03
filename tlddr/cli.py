@@ -18,6 +18,7 @@ from tlddr.understand.node_render import render_node_markdown
 from tlddr.understand.render import render_index, render_triage
 from tlddr.draft.read import build_read
 from tlddr.draft.claims import validate_claims, _claim_id
+from tlddr.draft.amend import apply_amendments
 from tlddr.draft.eval import groundedness_readout
 from tlddr.draft.verify import ingest_verdicts
 from tlddr.draft.assemble import render_published, render_sidecar
@@ -256,6 +257,32 @@ def draft_commit(claims_path: Path, extracted_dir: Path, work_dir: Path,
     return valid
 
 
+def draft_amend(amendments_path: Path, extracted_dir: Path, work_dir: Path,
+                sections_path: Path | None = None) -> None:
+    records = json.loads(amendments_path.read_text())
+    docs = {p.stem: _load_doc(extracted_dir, p.stem) for p in extracted_dir.glob("*.json")}
+    nodes = {n.id: n for n in (Node.model_validate_json(p.read_text())
+                               for p in (work_dir / "nodes").glob("*.json"))}
+    known_section_ids = section_ids(load_sections(sections_path)) if sections_path else None
+    claims = _load_claims(work_dir)
+    updated, amended, dropped = apply_amendments(records, claims, docs, nodes, known_section_ids)
+    (work_dir / "claims.json").write_text(
+        json.dumps([c.model_dump(mode="json") for c in updated], indent=2))
+
+    questions_path = work_dir / "questions.json"
+    questions = ([Question.model_validate(q) for q in json.loads(questions_path.read_text())]
+                 if questions_path.exists() else [])
+    flipped = 0
+    for q in questions:
+        if (q.claim_id in amended and q.status is QuestionStatus.REVISE_PENDING):
+            q.status = QuestionStatus.REVISE_APPLIED
+            flipped += 1
+    questions_path.write_text(json.dumps([q.model_dump(mode="json") for q in questions], indent=2))
+    for message in dropped:
+        print(f"dropped amendment: {message}")
+    print(f"amended {len(amended)} claims, applied {flipped} revise question(s)")
+
+
 def draft_verify_commit(verdicts_path: Path, work_dir: Path) -> None:
     verdicts = json.loads(verdicts_path.read_text())
     questions_path = work_dir / "questions.json"
@@ -401,6 +428,10 @@ def main(argv: list[str] | None = None) -> int:
     dcommit.add_argument("--claims", required=True, type=Path)
     dcommit.add_argument("--output", type=Path, default=None)
 
+    damend = sub.add_parser("draft-amend", help="apply validated claim-level edits (the re-pass)")
+    damend.add_argument("--amendments", required=True, type=Path)
+    damend.add_argument("--output", type=Path, default=None)
+
     dverify = sub.add_parser("draft-verify-commit", help="ingest C-lite judge verdicts")
     dverify.add_argument("--verdicts", required=True, type=Path)
     dverify.add_argument("--output", type=Path, default=None)
@@ -469,6 +500,11 @@ def main(argv: list[str] | None = None) -> int:
         paths = Paths(resolve_base(args.output))
         sections = paths.sections if paths.sections.exists() else None
         draft_commit(args.claims, paths.extracted, paths.work, sections)
+        return 0
+    if args.command == "draft-amend":
+        paths = Paths(resolve_base(args.output))
+        sections = paths.sections if paths.sections.exists() else None
+        draft_amend(args.amendments, paths.extracted, paths.work, sections)
         return 0
     if args.command == "draft-verify-commit":
         paths = Paths(resolve_base(args.output))

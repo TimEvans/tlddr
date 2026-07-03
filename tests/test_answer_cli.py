@@ -94,3 +94,32 @@ def test_repass_log_warns_after_three_cycles(tmp_path, capsys):
     capsys.readouterr()                       # clear
     main(["assemble", "--output", str(base)])
     assert "cycled 3 times" in capsys.readouterr().out
+
+
+def test_draft_amend_edits_claim_and_flips_revise(tmp_path):
+    from tlddr.cli import main
+    import json
+    base = tmp_path / "out"; work = base / "work"; (work / "nodes").mkdir(parents=True)
+    (work / "extracted").mkdir()
+    from tlddr.models import ExtractedDoc, PageProvenance, SignalType, ExtractMethod
+    doc = ExtractedDoc(id="n", source_path="/x", source_sha256="a", signal_type=SignalType.MIXED,
+                       raw_title="N", content="--- page 1 ---\na\n--- page 2 ---\nb",
+                       pages=[PageProvenance(page=1, method=ExtractMethod.PYMUPDF_TEXT, has_text_layer=True),
+                              PageProvenance(page=2, method=ExtractMethod.PYMUPDF_TEXT, has_text_layer=True)],
+                       extractor="pdf")
+    (work / "extracted" / "n.json").write_text(doc.model_dump_json())
+    (work / "claims.json").write_text(json.dumps([{
+        "id": "claim-a", "section_id": "s1", "text": "orig",
+        "sources": [{"node_id": "n", "page": 1}],
+        "support_level": "fully_supported", "evidence_relation": "quoted"}]))
+    (work / "questions.json").write_text(json.dumps([{
+        "id": "verify-claim-a-downgrade", "raised_by": "verify", "claim_id": "claim-a",
+        "section_id": "s1", "question": "q", "status": "revise_pending"}]))
+    amend = tmp_path / "am.json"
+    amend.write_text(json.dumps([{"claim_id": "claim-a", "set_text": "fixed",
+                                  "add_pages": [{"node_id": "n", "page": 2}]}]))
+    assert main(["draft-amend", "--amendments", str(amend), "--output", str(base)]) == 0
+    claims = json.loads((work / "claims.json").read_text())
+    assert claims[0]["text"] == "fixed" and sorted(s["page"] for s in claims[0]["sources"]) == [1, 2]
+    q = json.loads((work / "questions.json").read_text())[0]
+    assert q["status"] == "revise_applied"
