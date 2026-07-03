@@ -1,5 +1,5 @@
 from tlddr.models import Question, Disposition
-from tlddr.answer import question_identity, ingest_answers, build_worklist
+from tlddr.answer import question_identity, ingest_answers, build_worklist, parse_triage_answers
 
 
 def test_question_answer_fields_default():
@@ -99,3 +99,35 @@ def test_accept_does_not_enter_worklist():
     updated, worklist, _ = ingest_answers(records, qs)
     assert updated[0].resolved is True
     assert worklist["sections"] == [] and worklist["nodes"] == []
+
+
+_TRIAGE = """# Triage
+
+## Open questions
+### v-1
+Off by one page.
+> answer: [revise] Figure is right, cite p.47.
+
+### v-2
+Glossary drift.
+> answer: [accept] Acceptable, disclose it.
+
+### v-3
+Untouched question.
+> answer:
+
+### v-4
+Filled but not tagged.
+> answer: I think this is fine.
+"""
+
+
+def test_parse_triage_reads_tagged_slots():
+    records, skipped = parse_triage_answers(_TRIAGE)
+    by_id = {r["id"]: r for r in records}
+    assert by_id["v-1"] == {"id": "v-1", "disposition": "revise",
+                            "answer": "Figure is right, cite p.47."}
+    assert by_id["v-2"]["disposition"] == "accept"
+    assert "v-3" not in by_id          # unfilled slot ignored
+    assert "v-4" not in by_id          # untagged slot skipped
+    assert skipped == ["v-4"]

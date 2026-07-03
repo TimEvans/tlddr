@@ -1,3 +1,5 @@
+import re
+
 from tlddr.models import Question, Disposition
 
 
@@ -59,3 +61,33 @@ def ingest_answers(records: list[dict],
         if disposition is Disposition.REVISE:
             revised.append(q)
     return questions, build_worklist(revised), dropped
+
+
+_HEADING = re.compile(r"^###\s+(\S+)")
+_ANSWER = re.compile(r"^>\s*answer:\s*(.*)$")
+_TAG = re.compile(r"^\[(revise|accept)\]\s*(.*)$", re.IGNORECASE)
+
+
+def parse_triage_answers(triage_md: str) -> tuple[list[dict], list[str]]:
+    """Parse filled `> answer:` slots (with a leading [revise]/[accept] tag) into
+    answer records. Untagged-but-filled slots are reported as skipped."""
+    records: list[dict] = []
+    skipped: list[str] = []
+    current_id: str | None = None
+    for line in triage_md.splitlines():
+        heading = _HEADING.match(line)
+        if heading:
+            current_id = heading.group(1).strip()
+            continue
+        answer = _ANSWER.match(line)
+        if answer and current_id:
+            body = answer.group(1).strip()
+            if not body:
+                continue                       # unfilled slot
+            tag = _TAG.match(body)
+            if not tag:
+                skipped.append(current_id)     # filled but no tag -> machine-trust skip
+                continue
+            records.append({"id": current_id, "disposition": tag.group(1).lower(),
+                            "answer": tag.group(2).strip()})
+    return records, skipped
