@@ -22,15 +22,17 @@ The whole tl-ddr pipeline exercised end-to-end on a real SEC filing: **Chevron F
 | draft-eval | done | 544 fully / 2 partial / 1 unsupported; 478 quoted / 69 inferred |
 | **draft-verify (C-lite judge)** | done | 30 independent judges; **528 confirmed, 19 downgraded, 0 contradictions**; `chevron/work/verdicts.json` |
 | assemble | done | `chevron/report/report.md` + `report_comments.md` (incl. the 19 verify questions) |
-| **human review (apex)** | **NOT DONE — the pause point** | 19 verify questions sit in `_triage.md` / `report_comments.md` with `> answer:` slots |
+| **Reviewer session (apex)** | **PENDING — tooling ready, not yet run** | 19 verify questions sit in `_triage.md` / `report_comments.md` with `> answer:` slots |
 
-## The open item: human review (the proving gate)
+## The open item: the Reviewer session (the proving gate)
 
-Per `skills/draft-verify`, the run stops here for a human to decide, per question: **accept as an acknowledged finding** (stays in the sidecar) **or re-draft** the affected section. The 19 questions are all legitimate precision-nits, **not errors** (0 contradictions across 547 claims): causal/editorial embellishment not on the cited page (esp. "…due to the Hess acquisition"), citation off-by-one (figure correct, adjacent uncited page), and glossary phrasing drift. See the full list in `chevron/report/report_comments.md` (search `[judge:`).
+Per `skills/draft-verify`, the run stops here for a Reviewer to decide, per question: **accept as an acknowledged finding** (stays in the sidecar as a disclosed caveat) **or re-draft** the affected section. The 19 questions are all legitimate precision-nits, **not errors** (0 contradictions across 547 claims): causal/editorial embellishment not on the cited page (esp. "…due to the Hess acquisition"), citation off-by-one (figure correct, adjacent uncited page), and glossary phrasing drift. See the full list in `chevron/report/report_comments.md` (search `[judge:`).
 
 ### Human-review tooling status (verified 2026-07-03)
-- **Built:** the review *surface* — `Question.answer` field; questions render into `_triage.md` + `report_comments.md` with `> answer:` slots.
-- **NOT built:** the answer *loop* — no CLI ingests answers or triggers a re-pass (design D6 is designed-not-implemented). Answering is a manual edit; acting on an answer = manually re-running the affected `draft` section. So "human review" today = read the 19 questions and decide accept/re-draft by hand.
+- **BUILT — the answer loop (D6) is complete.** `tlddr answer-commit (--answers <f> | --triage <f>) --output <base>` (new `tlddr/answer.py`) validates Reviewer answer records `{id, disposition, answer}` against the question store, resolves matches, clears `blocking`, and writes a deduped `work/worklist.json` routed by `raised_by` (a `verify`/`draft` question routes to a section re-pass; an `understand` question routes to a node re-pass). Re-verify suppresses verdicts matching an already-resolved question's identity, so a re-pass never re-raises a settled question; `render_triage` splits Open vs Resolved; `render_sidecar` shows accepted findings as disclosed caveats; `assemble` warns if a target has cycled 3+ times.
+- **The interactive procedure is `skills/review`:** one open question at a time — states the question, links the `[[node_id]]`/cited pages, offers a grounded probable answer (ranked interpretations where genuinely ambiguous), and only commits on the Reviewer's explicit sign-off. It then walks the resulting worklist (re-drafts each named section via `skills/draft`'s new "Re-pass mode" note, re-runs `draft-verify`, or re-understands a node via `skills/understand`'s note) and re-`assemble`s to check convergence.
+- **How to resolve these 19 questions:** run `skills/review` with `export TLDDR_OUTPUT=chevron` (the existing `chevron/{work,vault,report,benchmark}` layout already matches the `<base>/work|vault|report` convention). Sign off each question, commit with `tlddr answer-commit --answers <answers.json> --output chevron` (or fill `> answer:` slots in `chevron/vault/_triage.md` with a leading `[revise]`/`[accept]` tag and run `tlddr answer-commit --triage chevron/vault/_triage.md --output chevron` instead), then walk the printed worklist and re-run `tlddr assemble --output chevron`.
+- **Not yet run:** nobody has walked these 19 questions through the loop yet — this Chevron run remains the live, un-exercised proving case for `skills/review`.
 
 ## PRESERVATION WARNING
 

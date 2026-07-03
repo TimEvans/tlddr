@@ -1,6 +1,6 @@
 # tlddr/draft - Module Index
 
-**Last Updated:** 2026-06-30
+**Last Updated:** 2026-07-03
 
 The deterministic Draft toolkit (stage 3, in progress). The model drafts + judges via skills; these helpers validate citations, score groundedness, and render the published draft + reviewer sidecar. Page-addressing decision A (synthetic page 1 for page-less docs; explicit page numbers for multi-page). No model calls here. The two host-agent procedures live in `skills/` (`draft`, `draft-verify`).
 
@@ -29,15 +29,15 @@ The deterministic Draft toolkit (stage 3, in progress). The model drafts + judge
 
 ### verify.py
 **Purpose:** Ingest C-lite judge verdicts and raise reconciliation questions.
-**Key Functions:** `ingest_verdicts(verdicts, claims) -> list[Question]` (raised_by="verify" on judge downgrade or contradiction)
-**Dependencies:** tlddr.models (DraftClaim, SupportLevel, Question)
+**Key Functions:** `ingest_verdicts(verdicts, claims, suppress=None) -> list[Question]` (raised_by="verify" on judge downgrade or contradiction; `suppress` is a set of `question_identity` tuples — verdicts matching an already-resolved question's identity are skipped, so a re-verify does not re-raise a settled question)
+**Dependencies:** tlddr.models (DraftClaim, SupportLevel, Question), tlddr.answer (question_identity)
 
 ### assemble.py
 **Purpose:** Deterministically render published draft + reviewer sidecar (no provenance leak to report.md).
 **Key Functions:**
 - `render_published(sections, claims) -> str` - clean markdown report (one section per heading, claims joined with space)
-- `render_sidecar(sections, claims, questions) -> str` - markdown sidecar (provenance, warnings, inferences, open questions per section; no-evidence sections called out)
-**Dependencies:** tlddr.models (DraftClaim, Section, Question, SupportLevel, EvidenceRelation, Confidence), eval
+- `render_sidecar(sections, claims, questions) -> str` - markdown sidecar (provenance, warnings, inferences, open questions per section; no-evidence sections called out); resolved+`accept` questions render per section as "Disclosed caveats (accepted findings)" (disposition + recorded answer); resolved+`revise` questions are hidden (superseded by the re-pass); unresolved questions still render as open questions
+**Dependencies:** tlddr.models (DraftClaim, Section, Question, SupportLevel, EvidenceRelation, Confidence, Disposition), eval
 
 ### __init__.py
 **Purpose:** Empty package marker.

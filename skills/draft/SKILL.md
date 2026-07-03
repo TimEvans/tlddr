@@ -152,3 +152,11 @@ Stop. Ask the user to review `$TLDDR_OUTPUT/report/report.md` and `$TLDDR_OUTPUT
 - Open findings in `report_comments.md` are understood and handled or acknowledged.
 
 Do not proceed to draft-verify or any downstream stage until the user approves.
+
+## Re-pass mode (answer loop)
+
+When re-drafting a section named in a `worklist.json` entry, read that entry's
+`guidance` field and treat it as Reviewer instruction for this section — it records a
+signed-off answer to an earlier question. Use it to steer the re-draft (what to keep,
+fix, or drop). It is guidance only: every claim must still cite a real `(node_id, page)`;
+the guidance text is never itself a citation. Then re-run `draft-verify` for the section.
