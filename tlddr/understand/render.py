@@ -1,4 +1,5 @@
 from tlddr.models import Node, Question, Triage, Section
+from tlddr.understand.triage import derive_triage
 
 _GROUP_ORDER = [Triage.RED, Triage.AMBER, Triage.GREEN]
 _GROUP_TITLE = {Triage.RED: "Red", Triage.AMBER: "Amber", Triage.GREEN: "Green"}
@@ -25,10 +26,18 @@ def isolated_nodes(nodes: list[Node]) -> list[str]:
     return sorted(n.id for n in nodes if not n.related and n.id not in targets)
 
 
+def _display_triage(node: Node, questions: list[Question]) -> Triage:
+    """Triage as it stands now: re-derive from the node's still-open questions so a
+    resolved blocking question visibly de-escalates the node (never mutates stored state)."""
+    node_qs = [q for q in questions if q.node_id == node.id and not q.resolved]
+    return derive_triage(node.confidence_extraction, node.confidence_interpretation, node_qs)
+
+
 def render_triage(nodes: list[Node], questions: list[Question],
                   sections: list[Section] | None = None) -> str:
     lines = ["# Triage", ""]
-    by_triage = {t: [n for n in nodes if n.triage is t] for t in _GROUP_ORDER}
+    by_triage = {t: [n for n in nodes if _display_triage(n, questions) is t]
+                 for t in _GROUP_ORDER}
     for t in _GROUP_ORDER:
         group = sorted(by_triage[t], key=lambda n: n.id)
         lines.append(f"## {_GROUP_TITLE[t]} ({len(group)})")
@@ -54,14 +63,27 @@ def render_triage(nodes: list[Node], questions: list[Question],
         lines.append("None.")
     lines.append("")
 
+    open_qs = [q for q in questions if not q.resolved]
+    resolved_qs = [q for q in questions if q.resolved]
+
     lines.append("## Open questions")
-    if not questions:
+    if not open_qs:
         lines.append("None.")
-    for q in questions:
+    for q in open_qs:
         target = f" ([[{q.node_id}]])" if q.node_id else ""
         flag = " [blocking]" if q.blocking else ""
         lines.append(f"### {q.id}{flag}{target}")
         lines.append(q.question)
         lines.append("> answer:")
         lines.append("")
+
+    if resolved_qs:
+        lines.append("## Resolved questions")
+        for q in resolved_qs:
+            target = f" ([[{q.node_id}]])" if q.node_id else ""
+            disposition = q.disposition.value if q.disposition else "resolved"
+            lines.append(f"### {q.id} ({disposition}){target}")
+            lines.append(q.question)
+            lines.append(f"> answer: {q.answer or ''}")
+            lines.append("")
     return "\n".join(lines) + "\n"
