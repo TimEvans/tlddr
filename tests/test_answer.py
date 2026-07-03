@@ -152,3 +152,36 @@ Node target only.
     assert by_id["u-2"] == {"id": "u-2", "disposition": "accept",
                             "answer": "Fine."}
     assert skipped == []
+
+
+def test_parse_triage_ignores_resolved_section():
+    """Resolved section questions must not appear in records or skipped."""
+    triage_with_resolved = """# Triage
+
+## Open questions
+### v-open
+An open question.
+> answer:
+
+### v-fill
+A question to revise.
+> answer: [revise] do it.
+
+## Resolved questions
+### v-done (accept)
+A resolved question.
+> answer: already decided earlier.
+"""
+    records, skipped = parse_triage_answers(triage_with_resolved)
+    by_id = {r["id"]: r for r in records}
+
+    # v-fill should be in records with revise disposition
+    assert by_id["v-fill"] == {"id": "v-fill", "disposition": "revise", "answer": "do it."}
+
+    # v-open should NOT be in records (empty slot)
+    assert "v-open" not in by_id
+
+    # v-done must NOT be in records or skipped (resolved section is ignored)
+    assert "v-done" not in by_id
+    assert "v-done" not in skipped
+    assert skipped == []

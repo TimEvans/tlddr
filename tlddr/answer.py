@@ -10,6 +10,8 @@ def _normalize(text: str) -> str:
 
 def question_identity(q: Question) -> tuple[str, str, str]:
     """Stable identity for dedup: same stage + same target + same (normalized) text."""
+    # Identity target intentionally differs from worklist routing target (node_id first).
+    # raised_by is part of the tuple, so cross-stage identities remain unambiguous.
     target = q.section_id or q.node_id or ""
     return (q.raised_by, target, _normalize(q.question))
 
@@ -64,17 +66,25 @@ def ingest_answers(records: list[dict],
 
 
 _HEADING = re.compile(r"^###\s+(\S+)")
+_SECTION = re.compile(r"^##\s+(.+)$")
 _ANSWER = re.compile(r"^>\s*answer:\s*(.*)$")
 _TAG = re.compile(r"^\[(revise|accept)\]\s*(.*)$", re.IGNORECASE)
 
 
 def parse_triage_answers(triage_md: str) -> tuple[list[dict], list[str]]:
     """Parse filled `> answer:` slots (with a leading [revise]/[accept] tag) into
-    answer records. Untagged-but-filled slots are reported as skipped."""
+    answer records. Untagged-but-filled slots are reported as skipped.
+    Only parses questions under the ## Open questions section; stops at ## Resolved questions."""
     records: list[dict] = []
     skipped: list[str] = []
     current_id: str | None = None
     for line in triage_md.splitlines():
+        section = _SECTION.match(line)
+        if section:
+            # Stop parsing when we reach the Resolved questions section
+            if "Resolved" in section.group(1):
+                break
+            continue
         heading = _HEADING.match(line)
         if heading:
             current_id = heading.group(1).strip()
