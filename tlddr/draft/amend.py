@@ -1,4 +1,4 @@
-from tlddr.models import DraftClaim, ExtractedDoc, Node
+from tlddr.models import DraftClaim, ExtractedDoc, Node, SupportLevel, EvidenceRelation
 from tlddr.draft.claims import validate_claims
 
 
@@ -12,14 +12,29 @@ def apply_amendments(records: list[dict], claims: list[DraftClaim],
     reported and the claim is left as-is."""
     by_id = {c.id: c for c in claims}
     dropped: list[str] = []
-    amended: set[str] = set()
     raw_amended: list[dict] = []
+
+    # Pre-validate axis values to isolate invalid amendments
+    support_values = {m.value for m in SupportLevel}
+    evidence_values = {m.value for m in EvidenceRelation}
+
     for r in records:
         cid = r.get("claim_id")
         claim = by_id.get(cid)
         if claim is None:
             dropped.append(f"unknown claim_id '{cid}'")
             continue
+
+        # Pre-validate axis values before building raw dict
+        if "set_support" in r:
+            if r["set_support"] not in support_values:
+                dropped.append(f"'{cid}': invalid set_support '{r['set_support']}'")
+                continue
+        if "set_evidence" in r:
+            if r["set_evidence"] not in evidence_values:
+                dropped.append(f"'{cid}': invalid set_evidence '{r['set_evidence']}'")
+                continue
+
         raw = claim.model_dump(mode="json")
         if "set_text" in r:
             raw["text"] = r["set_text"]

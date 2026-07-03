@@ -52,3 +52,36 @@ def test_set_support_and_evidence():
         claims, docs, nodes, {"s1"})
     assert updated[0].support_level is SupportLevel.PARTIALLY_SUPPORTED
     assert updated[0].evidence_relation is EvidenceRelation.INFERRED
+
+
+def test_invalid_axis_isolated_not_fatal():
+    docs, nodes, claims = _fixtures()
+    # Create a second valid claim for testing batch isolation
+    claim_b = DraftClaim(id="claim-b", section_id="s1", text="second",
+                        sources=[Citation(node_id="n", page=1)],
+                        support_level=SupportLevel.FULLY_SUPPORTED, evidence_relation=EvidenceRelation.QUOTED)
+
+    updated, amended, dropped = apply_amendments(
+        [{"claim_id": "claim-a", "set_support": "not_a_real_value"},
+         {"claim_id": "claim-b", "set_text": "fixed b"}],
+        [claims[0], claim_b], docs, nodes, {"s1"})
+
+    # claim-a should NOT be amended due to invalid support value
+    assert "claim-a" not in amended
+    assert any("claim-a" in msg and "set_support" in msg for msg in dropped)
+
+    # claim-b should be successfully amended
+    assert "claim-b" in amended
+    assert updated[1].text == "fixed b"
+
+    # claim-a should remain unchanged (original values)
+    assert updated[0].text == "original"
+    assert updated[0].support_level == SupportLevel.FULLY_SUPPORTED
+
+    # Test invalid evidence_relation as well
+    updated2, amended2, dropped2 = apply_amendments(
+        [{"claim_id": "claim-a", "set_evidence": "not_valid_evidence"}],
+        [claims[0]], docs, nodes, {"s1"})
+
+    assert "claim-a" not in amended2
+    assert any("claim-a" in msg and "set_evidence" in msg for msg in dropped2)
