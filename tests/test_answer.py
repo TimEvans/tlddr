@@ -131,3 +131,24 @@ def test_parse_triage_reads_tagged_slots():
     assert "v-3" not in by_id          # unfilled slot ignored
     assert "v-4" not in by_id          # untagged slot skipped
     assert skipped == ["v-4"]
+
+
+def test_parse_triage_handles_heading_suffixes():
+    triage_with_suffixes = """# Triage
+
+## Open questions
+### v-1 [blocking] ([[r972]])
+Off by one page.
+> answer: [revise] Cite p.47.
+
+### u-2 ([[r518]])
+Node target only.
+> answer: [accept] Fine.
+"""
+    records, skipped = parse_triage_answers(triage_with_suffixes)
+    by_id = {r["id"]: r for r in records}
+    assert by_id["v-1"] == {"id": "v-1", "disposition": "revise",
+                            "answer": "Cite p.47."}
+    assert by_id["u-2"] == {"id": "u-2", "disposition": "accept",
+                            "answer": "Fine."}
+    assert skipped == []
