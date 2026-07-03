@@ -36,7 +36,7 @@ The deterministic Draft toolkit (stage 3, in progress). The model drafts + judge
 **Purpose:** Deterministically render published draft + reviewer sidecar (no provenance leak to report.md).
 **Key Functions:**
 - `render_published(sections, claims) -> str` - clean markdown report (one section per heading, claims joined with space)
-- `render_sidecar(sections, claims, questions) -> str` - markdown sidecar (provenance, warnings, inferences, open questions per section; no-evidence sections called out); resolved+`accept` questions render per section as "Disclosed caveats (accepted findings)" (disposition + recorded answer); resolved+`revise` questions are hidden (superseded by the re-pass); unresolved questions still render as open questions
+- `render_sidecar(sections, claims, questions) -> str` - markdown sidecar (provenance, warnings, inferences, open questions per section; no-evidence sections called out); resolved+`accept` questions render per section as "Disclosed caveats (accepted findings)" (raising stage + recorded answer); resolved+`revise` questions are hidden (superseded by the re-pass); unresolved questions still render as open questions
 **Dependencies:** tlddr.models (DraftClaim, Section, Question, SupportLevel, EvidenceRelation, Confidence, Disposition), eval
 
 ### __init__.py

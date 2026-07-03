@@ -47,14 +47,24 @@ The entire run output is under **gitignored `chevron/`** — `git clean -fdx` wo
 
 ## Resume commands
 
+Every command derives its paths from the single `--output` base (`chevron`), so
+set it once and reuse it.
+
 Re-print the current state without re-running anything:
 ```
-.venv/bin/python -m tlddr.cli draft-eval  --work chevron/work --sections chevron/work/sections.json
+.venv/bin/python -m tlddr.cli draft-eval  --output chevron
 .venv/bin/python -m tlddr.cli bench report --benchmark chevron/benchmark
 sed -n '/raised_by.*verify/,+1p' chevron/work/questions.json   # or read report_comments.md
 ```
 Re-assemble after any change (verify questions re-surface):
 ```
-.venv/bin/python -m tlddr.cli assemble --work chevron/work --out chevron/report --sections chevron/work/sections.json --vault chevron/vault --benchmark chevron/benchmark
+.venv/bin/python -m tlddr.cli assemble --output chevron --benchmark chevron/benchmark
 ```
-To re-draft a contested section: re-run its `skills/draft` drafter (see `chevron/benchmark/run-log.md` for the per-section node lists), then `draft-commit` (section-scoped, replaces cleanly), then re-`assemble`.
+To work the open questions with the answer loop: run the `skills/review` session
+over the 19 verify questions, then `tlddr answer-commit --answers <f> --output chevron`
+(or `--triage chevron/vault/_triage.md`), which writes `chevron/work/worklist.json`.
+For each worklist section, re-run its `skills/draft` drafter with the recorded
+guidance (see `chevron/benchmark/run-log.md` for the per-section node lists), then
+`draft-commit` (section-scoped, replaces cleanly), re-run `draft-verify`, and
+re-`assemble`. Accepted questions surface as disclosed caveats; a re-verify that
+raises zero new questions means that section has converged.
