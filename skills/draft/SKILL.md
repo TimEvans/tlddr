@@ -155,8 +155,58 @@ Do not proceed to draft-verify or any downstream stage until the user approves.
 
 ## Re-pass mode (answer loop)
 
-When re-drafting a section named in a `worklist.json` entry, read that entry's
-`guidance` field and treat it as Reviewer instruction for this section — it records a
-signed-off answer to an earlier question. Use it to steer the re-draft (what to keep,
-fix, or drop). It is guidance only: every claim must still cite a real `(node_id, page)`;
-the guidance text is never itself a citation. Then re-run `draft-verify` for the section.
+When a `worklist.json` entry (or a signed-off `revise` question) targets specific claims
+in an already-drafted section, amend those claims surgically with `draft-amend`. **Do not
+regenerate the whole section** — a full re-draft churns claims the Reviewer never
+questioned and reopens findings that were already accepted. Amend only the claims the
+guidance names.
+
+### 1. Identify the target claims
+
+Read `$TLDDR_OUTPUT/work/claims.json` and find the `id` of each claim the guidance
+targets — the question's `claim_id`, or the claim(s) the worklist entry's guidance
+describes.
+
+### 2. Author the amendments file
+
+Write one record per amended claim to a temporary file (e.g.
+`$TLDDR_OUTPUT/work/amendments.json`). Each record targets a claim by its `id` and
+carries only the edits it needs — `set_text`, `add_pages`, `set_support`, and
+`set_evidence` are all optional:
+
+```json
+[
+  {
+    "claim_id": "<claim-id-from-claims.json>",
+    "set_text": "<corrected claim text>",
+    "add_pages": [{"node_id": "<node-id>", "page": 12}]
+  },
+  {
+    "claim_id": "<other-claim-id>",
+    "set_support": "partially_supported"
+  }
+]
+```
+
+Treat the guidance as instruction only, exactly as in a fresh draft — it is never itself
+a citation. Any `add_pages` entry must point to a page you have actually read.
+
+### 3. Apply the amendments
+
+```
+.venv/bin/tlddr draft-amend \
+  --amendments "$TLDDR_OUTPUT/work/amendments.json" \
+  --output "$TLDDR_OUTPUT"
+```
+
+The CLI re-validates each amended claim through the same grounding checks as
+`draft-commit` (citations must resolve to real pages, `set_support`/`set_evidence` must
+be a known value). An unknown `claim_id`, or an amendment that fails re-validation, is
+reported and dropped — the claim is left as-is; check the printed messages. Amending a
+claim whose `verify` question is `revise_pending` flips that question to
+`revise_applied`.
+
+### 4. Re-verify
+
+Re-run `draft-verify` for the affected section(s) so the independent judge re-checks the
+amended claims.

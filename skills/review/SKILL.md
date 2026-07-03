@@ -18,9 +18,10 @@ the Reviewer — this session runs whenever they are ready, and is resumable.
   `{id, disposition, answer}` where `disposition` is `revise` (re-draft/re-understand
   with this answer as guidance) or `accept` (acknowledge as a disclosed caveat).
 - **CLI validates and acts:** `answer-commit` validates each id against the question
-  store and the disposition against `{revise, accept}`, sets the answer, clears
-  `blocking`, and writes the deduped re-pass worklist. Unknown ids are reported and
-  dropped.
+  store and the disposition against `{revise, accept}`, sets the answer and the
+  question's `status` (`accepted` for `accept`, `revise_pending` for `revise`), and
+  writes the deduped re-pass worklist. Unknown ids, and records with an invalid
+  disposition, are reported and dropped.
 - **Grounding guardrail:** an answer is guidance, never evidence. A re-draft still
   cites real `(node_id, page)` sources; the answer cannot become a citation.
 
@@ -40,8 +41,8 @@ All paths are relative to the run's output base, `$TLDDR_OUTPUT` (default `.tldd
 
 ### 1. Load the open queue
 
-Read `$TLDDR_OUTPUT/work/questions.json`. Work only the questions where `resolved`
-is false. Order them blocking-first, then by section. Tell the Reviewer how many
+Read `$TLDDR_OUTPUT/work/questions.json`. Work only the questions whose `status` is
+`open`. Order them blocking-first, then by section. Tell the Reviewer how many
 open questions there are.
 
 ### 2. Present ONE question at a time
@@ -86,10 +87,20 @@ Read the printed RE-PASS WORKLIST.
 
 ### 5. Walk the worklist
 
-For each **section** entry (re-draft): re-run the `draft` skill for that section with
-the entry's `guidance` in context (as instruction, never as a citation), then re-run
-`draft-verify` for it. Already-resolved questions will be suppressed on re-ingest; only
-genuinely new problems surface.
+For each **section** entry (re-pass): treat the entry's `guidance` as Reviewer
+instruction for the specific claims the question named — **do not regenerate the whole
+section**; a full re-draft churns claims the Reviewer never questioned and reopens
+findings already accepted. Look up those claims' `id`s in `$TLDDR_OUTPUT/work/claims.json`,
+author an `amendments.json` record per claim (`{claim_id, set_text?, add_pages?,
+set_support?, set_evidence?}`), and apply it:
+
+```
+.venv/bin/tlddr draft-amend --amendments <amendments.json> --output "$TLDDR_OUTPUT"
+```
+
+Amend only the claims the guidance names, then re-run `draft-verify` for that section.
+Already-resolved questions will be suppressed on re-ingest; only genuinely new problems
+surface.
 
 For each **node** entry (re-understand): re-run the `understand` skill for that node
 with the guidance in context, then `understand-commit`. If the node's section tags

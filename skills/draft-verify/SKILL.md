@@ -11,7 +11,7 @@ An independent judge pass that re-reads the source evidence and assesses each co
 
 ## Deterministic/Agent Boundary
 
-- **Agent supplies:** verdicts — `{index, support_level, contradiction, note}` for each claim, in order.
+- **Agent supplies:** verdicts — `{claim_id, support_level, contradiction, note}` for each claim, referencing the claim's `id` from `claims.json`.
 - **CLI ingests and raises questions:** only disagreements produce questions. Agreements are silent. All questions are tagged `raised_by=verify` and surface in `report_comments.md` after assembly.
 - **Fresh context required:** do not carry over any reasoning, notes, or intermediate conclusions from the drafting pass. The value of this pass is independence.
 
@@ -37,13 +37,13 @@ Before starting:
 
 ### 1. Load the committed claims
 
-Read `$TLDDR_OUTPUT/work/claims.json`. The array is the authoritative ordered list of committed claims. Note the total count — your verdict array must have one entry per claim, covering every index from `0` to `n-1` in order.
+Read `$TLDDR_OUTPUT/work/claims.json`. The array is the authoritative list of committed claims. Note each claim's `id` — your verdict array must reference every claim by its `id`; order does not matter.
 
-Each claim record contains: `section_id`, `text`, `support_level` (the drafter's assessment), `evidence_relation`, and `sources` (a list of `{node_id, page}` pairs).
+Each claim record contains: `id`, `section_id`, `text`, `support_level` (the drafter's assessment), `evidence_relation`, and `sources` (a list of `{node_id, page}` pairs).
 
 ### 2. Verify each claim
 
-For each claim (in index order):
+For each claim:
 
 #### 2a. Read the cited page(s)
 
@@ -66,17 +66,17 @@ Do not reference any information beyond the pages you have read for that specifi
 
 ### 3. Emit verdicts JSON
 
-Write the complete verdicts array to a temporary file (e.g. `$TLDDR_OUTPUT/work/verdicts.json`). The array must contain one entry per claim, in the same index order as `$TLDDR_OUTPUT/work/claims.json`:
+Write the complete verdicts array to a temporary file (e.g. `$TLDDR_OUTPUT/work/verdicts.json`). The array must contain one entry per claim, each keyed on that claim's `id`:
 
 ```json
 [
-  {"index": 0, "support_level": "fully_supported", "contradiction": false, "note": ""},
-  {"index": 1, "support_level": "partially_supported", "contradiction": false, "note": "Source mentions the figure only in passing; the claim overstates certainty."},
-  {"index": 2, "support_level": "unsupported", "contradiction": true, "note": "Source states the value is 12%, not 8% as claimed."}
+  {"claim_id": "claim-3f2a91bc", "support_level": "fully_supported", "contradiction": false, "note": ""},
+  {"claim_id": "claim-8ad4102e", "support_level": "partially_supported", "contradiction": false, "note": "Source mentions the figure only in passing; the claim overstates certainty."},
+  {"claim_id": "claim-01c7f5da", "support_level": "unsupported", "contradiction": true, "note": "Source states the value is 12%, not 8% as claimed."}
 ]
 ```
 
-Every index from `0` to `n-1` must appear. An omitted index leaves that claim unreviewed — the CLI will not catch the gap.
+Every claim's `id` from `claims.json` must appear. An omitted id leaves that claim unreviewed — the CLI will not catch the gap. A verdict whose `claim_id` does not match any committed claim, or whose `support_level` is not a valid value, is silently skipped — double-check ids against `claims.json`.
 
 ### 4. Commit the verdicts
 
@@ -86,7 +86,7 @@ tlddr draft-verify-commit \
   --output "$TLDDR_OUTPUT"
 ```
 
-The CLI compares each judged `support_level` against the drafter's recorded level. A downgrade (judge's level is lower than the drafter's) or a `contradiction: true` raises a question. Agreements produce no output. The command prints how many questions were raised.
+The CLI looks up each verdict's claim by `claim_id` and compares the judged `support_level` against the drafter's recorded level. A downgrade (judge's level is lower than the drafter's) or a `contradiction: true` raises a question whose id is `verify-{claim_id}-{reason}` (`reason` is `downgrade` or `contradiction`); that id is the dedup key, so re-verifying after a re-pass does not re-raise a question already answered. Agreements produce no output. The command prints how many questions were raised.
 
 ### 5. Review the outcome
 
