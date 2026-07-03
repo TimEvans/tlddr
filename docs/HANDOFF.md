@@ -13,7 +13,7 @@ A proof-of-concept that drafts **Due Diligence reports** from a pile of client s
 
 In industry terms it is a **template-driven, attributed grounded-generation system built on agentic RAG** (claim-level attribution per AIS/ALCE, agentic/tiered retrieval per Self-RAG, faithfulness eval per RAGAS, abstention). The due-diligence report is one application; nothing in the machinery is specific to it. The name is retained from the project's origin (no longer scoped to *technical* due diligence; a `tldreport` = "TempLate Driven Report" rename was floated and **deferred**). The success bar: a senior engineer looks at the output and says "this genuinely saved me time, and I trust how it got there."
 
-**The pipeline (four stages + a cross-cutting channel) — all four now built:**
+**The pipeline (four stages + a cross-cutting channel) — all four stages built + proven; the channel's *answer loop* is the one open seam (direction 0):**
 ```
 Extract ──► Understand ──► Draft (per section) ──► Assemble ──► report + reviewer sidecar
 [done]       [done]          [done, proven]         [done: tlddr assemble]
@@ -86,9 +86,15 @@ Ran extract → understand (P1 per-doc + P2 edges) → generate-sections (42-sec
 
 ## NEXT — candidate directions (all four stages exist; pick one to start)
 
-No single "next stage" remains. The work now is hardening, broadening, and the deferred eval/output layers. Brainstorm the chosen one first (superpowers workflow). Recommended order:
+All five stages exist and are proven forward (extract → understand → draft → verify → assemble), **but the pipeline is still a one-shot forward pass** — the one designed seam not yet built is the **answer loop (D6)**, which is what "finish the first pass" means. Brainstorm the chosen direction first (superpowers workflow).
 
-**A. Harden + complete the current-corpus proving (recommended first).** Two real tooling findings the proving run surfaced, plus full coverage:
+**0. Close the answer loop (D6) — finish the first pass. RECOMMENDED NEXT (user's call, 2026-07-03).**
+The cross-cutting Quarantine queue is half-built: questions accumulate from understand/draft/verify into one `questions.json` store, and they render into `_triage.md` + `report_comments.md` with `> answer:` slots (`render.py:65`), so the human-review *surface* exists. But **nothing ingests an answer or acts on it** — there is no CLI for it, `Question.answer` is a slot nothing consumes, and D6's "answers trigger re-passes" is designed-not-implemented (verified 2026-07-03). Today, review is manual: a human reads the questions and hand-re-runs a contested `draft` section. Building the loop makes the tool's defining posture ("review → correct → sign off") actually actionable and closes the pipeline.
+   - **Scope to brainstorm:** (1) how answers are ingested — parse the markdown `> answer:` slots vs a structured `answer-commit` input vs answer-source-agnostic (a human OR a follow-up retrieval could answer); (2) routing — an answered question goes back to the stage that can act on it (`raised_by`: understand-question → re-understand the node; draft/verify-question → re-draft the section); (3) re-pass trigger + scoping — which section/node re-runs, with the answer now in context; (4) the `blocks`/`blocking` fields (`Question` already has `blocks: list[str]`, `blocking: bool`) — answered blocking questions unblock their targets; (5) termination/idempotency — don't re-raise the same question forever; mark resolved; re-assemble.
+   - **Machine-trust guardrail (keep):** ingestion validated by the CLI like every other seam; the re-pass must not weaken grounding (claims still resolve to a real `(node_id, page)`) or honest abstention.
+   - **Deliverables:** `superpowers:brainstorming` → spec in `docs/superpowers/specs/` → `writing-plans` → `subagent-driven-development` (TDD, branch off main). Then the Chevron run's 19 open verify questions become the live test case (`docs/chevron-run-status.md`).
+
+**A. Harden the two proving-run tooling findings.** Two real edges the earlier proving run surfaced:
    1. **KMZ/identity docs are uncitable** — extractors that populate `pages[]` but emit no `--- page N ---` content marker make `citable_pages` return empty, so a claim citing them is dropped (it hit the AEMO GIS files). Fix: treat "pages present but no markers" as page 1 = whole content in `pages.py` (the Task-2 reviewer flagged this edge; now confirmed live). DOCX is fine because it has `pages=[]` → the page-less branch already gives it page 1.
    2. **`no_evidence_sections` conflates "no source" with "not drafted"** — on a partial run, sections with tagged nodes but no committed claims show as "insufficient evidence." Distinguish "no tagged nodes" (true abstention) from "not yet drafted."
    3. Draft the remaining 4 sections (key-technology + its type-1/type-2 children, operation-maintenance) for a complete report, then re-run end-to-end.
@@ -144,4 +150,4 @@ No single "next stage" remains. The work now is hardening, broadening, and the d
 5. **Re-create a working vault if needed:** `tlddr extract --output <base>` over a corpus populates `<base>/work/extracted/`; follow `skills/understand` then `skills/draft`. The Chevron run is fully materialized under `chevron/{work,vault,report,benchmark}` (gitignored) — a worked example of the whole pipeline incl. a real 42-section `sections.json`. All run artifacts (`.tlddr/`, `output/`, `chevron/`, `vault/`, `report/`) and all of `docs/test-reports/` are gitignored.
 6. **Git discipline:** branch off `main` for new work (don't commit to main directly — docs/handoff housekeeping excepted); conventional commits; no emojis (hard rule). TurboVault is live in `.mcp.json` (activates on session reload).
 
-**Recommended immediate first action:** the pipeline is now proven end-to-end on two corpora (engineering + Chevron). Highest-value next work is **B-opt** (draft-stage retrieval optimization — the benchmark showed it is the dominant cost, and the brainstorm seed is written) or **A** (the two small proving-run tooling findings). Both start with `superpowers:brainstorming`.
+**Recommended immediate first action (user's decision, 2026-07-03):** **finish the first pass** by building **direction 0 — the answer loop (D6)**, the last unbuilt seam in the designed pipeline. Do this *before* the enhancement work (B-opt / RAPTOR-style index), which is explicitly deferred until the first pass is complete. Start with `superpowers:brainstorming`; the Chevron run's 19 open verify questions are the ready-made test case.
