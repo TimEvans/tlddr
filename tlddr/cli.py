@@ -178,6 +178,7 @@ def understand_commit(enrichment_path: Path, extracted_dir: Path, out_dir: Path,
     existing = [q for q in existing if q.get("node_id") != node.id]  # replace this node's prior questions
     existing.extend(q.model_dump(mode="json") for q in questions)
     questions_path.write_text(json.dumps(existing, indent=2))
+    _apply_revises(out_dir, lambda q, nid=node.id: q.node_id == nid)
 
     for d in dropped_edges:
         print(f"dropped edge {node.id} -> {d.target} ({d.relation.value}): target not in node set")
@@ -221,6 +222,18 @@ def _append_questions(work_dir: Path, new: list,
     path.write_text(json.dumps(existing, indent=2))
 
 
+def _apply_revises(work_dir: Path, match) -> None:
+    """Flip REVISE_PENDING -> REVISE_APPLIED for questions the given predicate selects."""
+    path = work_dir / "questions.json"
+    if not path.exists():
+        return
+    questions = [Question.model_validate(q) for q in json.loads(path.read_text())]
+    for q in questions:
+        if q.status is QuestionStatus.REVISE_PENDING and match(q):
+            q.status = QuestionStatus.REVISE_APPLIED
+    path.write_text(json.dumps([q.model_dump(mode="json") for q in questions], indent=2))
+
+
 def draft_read(extracted_dir: Path, node_id: str, pages: list[int] | None) -> str:
     return build_read(_load_doc(extracted_dir, node_id), pages=pages)
 
@@ -253,6 +266,8 @@ def draft_commit(claims_path: Path, extracted_dir: Path, work_dir: Path,
         _append_questions(work_dir, [],
                           drop=lambda q, s=section: q.get("raised_by") == "draft" and q.get("section_id") == s)
     _append_questions(work_dir, findings)
+    for section in submitted_sections:
+        _apply_revises(work_dir, lambda q, s=section: q.section_id == s)
     print(f"committed {len(valid)} claims, {len(findings)} findings")
     return valid
 
@@ -361,6 +376,10 @@ def assemble(work_dir: Path, out_dir: Path, sections_path: Path,
         questions_path = work_dir / "questions.json"
         questions = ([Question.model_validate(q) for q in json.loads(questions_path.read_text())]
                      if questions_path.exists() else [])
+        pending = [q for q in questions if q.status is QuestionStatus.REVISE_PENDING]
+        for q in pending:
+            print(f"warning: {q.id} is revise_pending with no re-pass applied "
+                  f"(section {q.section_id})")
         repass_log_path = work_dir / "repass_log.json"
         if repass_log_path.exists():
             log = json.loads(repass_log_path.read_text())

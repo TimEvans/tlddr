@@ -96,6 +96,24 @@ def test_repass_log_warns_after_three_cycles(tmp_path, capsys):
     assert "cycled 3 times" in capsys.readouterr().out
 
 
+def test_assemble_warns_on_unapplied_revise(tmp_path, capsys):
+    base = _work_with_questions(tmp_path, [
+        {"id": "verify-claim-x-downgrade", "raised_by": "verify", "claim_id": "claim-x",
+         "section_id": "s1", "question": "fix me", "status": "revise_pending"}])
+    capsys.readouterr()
+    main(["assemble", "--output", str(base)])
+    assert "revise_pending" in capsys.readouterr().out.lower()
+
+
+def test_assemble_silent_once_applied(tmp_path, capsys):
+    base = _work_with_questions(tmp_path, [
+        {"id": "verify-claim-x-downgrade", "raised_by": "verify", "claim_id": "claim-x",
+         "section_id": "s1", "question": "fixed", "status": "revise_applied"}])
+    capsys.readouterr()
+    main(["assemble", "--output", str(base)])
+    assert "revise_pending" not in capsys.readouterr().out.lower()
+
+
 def test_draft_amend_edits_claim_and_flips_revise(tmp_path):
     from tlddr.cli import main
     import json
