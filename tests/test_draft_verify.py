@@ -1,5 +1,5 @@
 from tlddr.draft.verify import ingest_verdicts
-from tlddr.models import DraftClaim, Citation, SupportLevel, EvidenceRelation, Confidence, QuestionStatus
+from tlddr.models import DraftClaim, Citation, SupportLevel, EvidenceRelation, Confidence
 
 
 def _claim(cid="claim-a", section="s1", support=SupportLevel.FULLY_SUPPORTED, text="claimed strongly"):
@@ -52,3 +52,31 @@ def test_dedup_robust_to_note_and_text_drift():
                               "contradiction": False, "note": "a totally different note"}],
                             claims_v2, suppress)
     assert again == []      # suppressed on claim_id + reason, not text/note
+
+
+def test_invalid_support_level_is_skipped():
+    assert ingest_verdicts([{"claim_id": "claim-a", "support_level": "bogus_value",
+                             "contradiction": False}], [_claim()]) == []
+
+
+def test_missing_support_level_is_skipped():
+    assert ingest_verdicts([{"claim_id": "claim-a", "contradiction": False}],
+                           [_claim()]) == []
+
+
+def test_unrelated_suppress_entry_does_not_block_new_question():
+    claims = [_claim()]
+    qs = ingest_verdicts([{"claim_id": "claim-a", "support_level": "unsupported",
+                           "contradiction": False}], claims, {"verify-claim-OTHER-downgrade"})
+    assert len(qs) == 1
+    assert qs[0].id == "verify-claim-a-downgrade"
+
+
+def test_duplicate_verdict_same_claim_and_reason_emits_once():
+    claims = [_claim()]
+    qs = ingest_verdicts([{"claim_id": "claim-a", "support_level": "unsupported",
+                           "contradiction": False},
+                          {"claim_id": "claim-a", "support_level": "unsupported",
+                           "contradiction": False}], claims)
+    assert len(qs) == 1
+    assert qs[0].id == "verify-claim-a-downgrade"
