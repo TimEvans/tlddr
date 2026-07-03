@@ -21,6 +21,7 @@ from tlddr.draft.claims import validate_claims
 from tlddr.draft.eval import groundedness_readout
 from tlddr.draft.verify import ingest_verdicts
 from tlddr.draft.assemble import render_published, render_sidecar
+from tlddr.answer import ingest_answers, parse_triage_answers, question_identity
 from tlddr import bench
 
 
@@ -247,9 +248,56 @@ def draft_commit(claims_path: Path, extracted_dir: Path, work_dir: Path,
 
 def draft_verify_commit(verdicts_path: Path, work_dir: Path) -> None:
     verdicts = json.loads(verdicts_path.read_text())
-    questions = ingest_verdicts(verdicts, _load_claims(work_dir))
-    _append_questions(work_dir, questions, drop=lambda q: q.get("raised_by") == "verify")
-    print(f"raised {len(questions)} verify questions")
+    questions_path = work_dir / "questions.json"
+    existing = ([Question.model_validate(q) for q in json.loads(questions_path.read_text())]
+                if questions_path.exists() else [])
+    suppress = {question_identity(q) for q in existing if q.resolved}
+    new_qs = ingest_verdicts(verdicts, _load_claims(work_dir), suppress)
+    _append_questions(
+        work_dir, new_qs,
+        drop=lambda q: q.get("raised_by") == "verify" and not q.get("resolved"))
+    print(f"raised {len(new_qs)} verify questions")
+
+
+def _format_worklist(worklist: dict) -> str:
+    lines = ["RE-PASS WORKLIST"]
+    if worklist["sections"]:
+        lines.append("Section re-passes (re-draft -> re-verify):")
+        for s in worklist["sections"]:
+            lines.append(f"  - {s['section_id']}   from: {', '.join(s['from'])}")
+            lines.append(f"    guidance: {s['guidance']}")
+    if worklist["nodes"]:
+        lines.append("Node re-passes (re-understand):")
+        for n in worklist["nodes"]:
+            lines.append(f"  - {n['node_id']}   from: {', '.join(n['from'])}")
+            lines.append(f"    guidance: {n['guidance']}")
+    if not worklist["sections"] and not worklist["nodes"]:
+        lines.append("(nothing to re-pass)")
+    return "\n".join(lines)
+
+
+def answer_commit(answers_path: Path | None, triage_path: Path | None, work_dir: Path,
+                  sections_path: Path | None = None, vault_dir: Path | None = None) -> None:
+    questions_path = work_dir / "questions.json"
+    questions = ([Question.model_validate(q) for q in json.loads(questions_path.read_text())]
+                 if questions_path.exists() else [])
+    if triage_path is not None:
+        records, skipped = parse_triage_answers(triage_path.read_text())
+        for qid in skipped:
+            print(f"skipped slot for '{qid}': filled but no [revise]/[accept] tag")
+    else:
+        records = json.loads(answers_path.read_text())
+
+    updated, worklist, dropped = ingest_answers(records, questions)
+    for message in dropped:
+        print(f"dropped answer: {message}")
+    questions_path.write_text(
+        json.dumps([q.model_dump(mode="json") for q in updated], indent=2))
+    (work_dir / "worklist.json").write_text(json.dumps(worklist, indent=2))
+    print(_format_worklist(worklist))
+
+    if vault_dir is not None:
+        understand_render(work_dir, vault_dir, sections_path)
 
 
 def draft_eval(work_dir: Path, sections_path: Path, benchmark: Path | None = None) -> None:
@@ -329,6 +377,13 @@ def main(argv: list[str] | None = None) -> int:
     dverify.add_argument("--verdicts", required=True, type=Path)
     dverify.add_argument("--output", type=Path, default=None)
 
+    acommit = sub.add_parser("answer-commit",
+                             help="ingest reviewer answers and build the re-pass worklist")
+    asrc = acommit.add_mutually_exclusive_group(required=True)
+    asrc.add_argument("--answers", type=Path, default=None)
+    asrc.add_argument("--triage", type=Path, default=None)
+    acommit.add_argument("--output", type=Path, default=None)
+
     deval = sub.add_parser("draft-eval", help="print the tier-B groundedness readout")
     deval.add_argument("--output", type=Path, default=None)
     deval.add_argument("--benchmark", type=Path, default=None)
@@ -390,6 +445,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "draft-verify-commit":
         paths = Paths(resolve_base(args.output))
         draft_verify_commit(args.verdicts, paths.work)
+        return 0
+    if args.command == "answer-commit":
+        paths = Paths(resolve_base(args.output))
+        sections = paths.sections if paths.sections.exists() else None
+        answer_commit(args.answers, args.triage, paths.work, sections, paths.vault)
         return 0
     if args.command == "draft-eval":
         paths = Paths(resolve_base(args.output))
