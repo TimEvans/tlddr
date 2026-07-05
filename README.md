@@ -1,5 +1,7 @@
 # tlddr
 
+[![tests](https://github.com/TimEvans/tlddr/actions/workflows/tests.yml/badge.svg)](https://github.com/TimEvans/tlddr/actions/workflows/tests.yml)
+
 **Template-driven report generation, grounded in a source corpus.**
 
 `tlddr` reads a pile of source documents and drafts a structured report against a
