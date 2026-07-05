@@ -63,6 +63,14 @@ The shortfalls are **concentrated, mostly cheap, and share two upstream root cau
 
 ---
 
+## Entry-point friction (found running the answer-loop re-smoke-test, 2026-07-05)
+
+**There is no low-friction named entry point to a pipeline stage.** Today a stage is kicked off by pointing the host agent at a `@skills/<stage>/SKILL.md` file and manually `export TLDDR_OUTPUT=<base>` — discoverable by nobody, and it invites pasting a long prose prompt. The skills themselves are sound (procedure + judgment live there, per the "model = host agent" architecture); what is missing is the front door.
+
+**Fix (small, high user-value):** a thin invokable wrapper per stage — `/understand`, `/draft`, `/review` — that takes `--output <base>` and just invokes the existing `SKILL.md` procedure. The wrapper is the entry point; the skill stays where the judgment is. It cannot collapse into a pure `tlddr <stage>` CLI verb (the reasoning is inherently agentic), but the *invocation* should be one named command with a flag, not an essay. Relates to smoke-test finding F8 (the skill under-specifies the reviewer's job): the wrapper is the natural place to set expected depth. Out of answer-loop scope; a clean standalone task.
+
+---
+
 ## Net
 
 In-line to ahead on architecture and attribution; behind on verification rigor and whole-doc comprehension. The single cheapest fix (the comprehension prefix) is also one of the highest-impact.
