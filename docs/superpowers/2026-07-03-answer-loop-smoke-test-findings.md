@@ -8,6 +8,30 @@ re-assemble — plus a throwaway blind-regeneration experiment on the glossary s
 (isolated scratch, committed report untouched). This is the authoritative consolidation of
 what that run surfaced; supersedes the scratch notes in `.superpowers/sdd/`.
 
+**Hardening validated (2026-07-05):** the five fixes below (spec
+`2026-07-03-answer-loop-hardening-design.md`, merged) were re-smoke-tested on **Sonnet at
+medium effort** (the honest end-user floor — see F8) over two Chevron sections in an
+isolated `chevron-retest/` base. Both changed model-facing contracts held, verified against
+disk: (1) claim_id-keyed verdicts — 35/35 claims covered, 0 botched/dropped ids, 5
+downgrades → 5 correctly-formed new-shape questions; (2) the `draft-amend` re-pass —
+full lifecycle `open → revise_pending → revise_applied`, `answers.json`/`amendments.json`
+key-spaces not crossed, all 5 edits re-validated through grounding, re-verify converged
+(0 new), committed report isolated. On the hardest claim Sonnet reasoned *better* than the
+original Opus run (caught the $10B-includes-finance-leases table artifact). Net: the
+hardening is sound and the quality is not a big-model artifact. One new ergonomic finding —
+see F11 below.
+
+## F11 — Decisions encoded twice in the hardened re-pass (ergonomic)
+The hardened flow makes the reviewer express each decision twice: once as `answers.json`
+(`{id, disposition, answer}` — audit trail + lifecycle transition) and once as
+`amendments.json` (`{claim_id, set_text/add_pages/...}` — the mechanical edit). Functionally
+correct and each has a distinct job, but redundant to author. Pre-hardening, the
+`answers.json` guidance *was* the re-pass instruction (fed a full re-draft); now the precise
+`amendments.json` carries the edit and the guidance is only recorded. *Fix (with the
+entry-point-friction item in next-steps.md):* let the review wrapper derive the `answers.json`
+disposition/lifecycle record from the same signed-off edit that produces the amendment, so
+the reviewer specifies the fix once. Non-blocking.
+
 ---
 
 ## Top-line result
