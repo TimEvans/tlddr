@@ -23,20 +23,9 @@ with page-level citations.
 
 ## How it works
 
-```mermaid
-flowchart TD
-    docs["Source documents<br/>Word · Excel · PDF"] --> extract["Extract<br/>route by signal type"]
-    extract --> understand["Understand<br/>describe · tag · link into vault"]
-    understand --> draft["Draft<br/>grounded, page-cited claims"]
-    draft --> verify["Verify + Assemble<br/>independent judge · deterministic roll-up"]
-    verify --> report["Attributed report"]
-    verify --> sidecar["Reviewer sidecar<br/>provenance · gaps · open questions"]
-
-    understand -.->|"can't understand"| gaps{{"Honest gaps<br/>(quarantine)"}}
-    draft -.->|"no evidence"| gaps
-
-    sidecar -.->|"sign off · re-run<br/>affected nodes / sections"| understand
-```
+<p align="center">
+  <img src="pipeline.svg" width="640" alt="tlddr pipeline: Extract, Understand, Draft, Assemble with a Quarantine channel and Review loop">
+</p>
 
 A four-stage pipeline over a shared vault, with quarantine as a cross-cutting channel for
 anything the tool cannot understand or has no evidence for:
