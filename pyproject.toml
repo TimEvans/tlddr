@@ -2,6 +2,8 @@
 name = "tlddr"
 version = "0.1.0"
 description = "tl-ddr: template-driven Due Diligence report generator — grounded, attributed report drafting from a source-document corpus (agentic RAG)"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.6",
@@ -22,7 +24,7 @@ dev = [
 tlddr = "tlddr.cli:main"
 
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
