@@ -5,7 +5,7 @@ __pycache__/
 .tlddr/
 vault/
 report/
-/docs/test-reports/
+/docs/
 /.timekeeper
 
 output/

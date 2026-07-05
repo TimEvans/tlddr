@@ -63,8 +63,8 @@ uv run tlddr --help                        # full command list
 ```
 
 The model-driven stages are driven by the matching skill in `skills/` (`understand`,
-`generate-sections`, `draft`, `draft-verify`, `review`). A worked run and the canonical
-command sequence are documented in `docs/chevron-run-status.md`.
+`generate-sections`, `draft`, `draft-verify`, `review`), each of which documents the
+command sequence for that stage.
 
 ## Output
 
