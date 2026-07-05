@@ -28,6 +28,7 @@ dist/
 
 # Claude local (personal, machine-specific)
 .claude/settings.local.json
+.mcp.json
 
 # Secrets (belt-and-suspenders)
 .env

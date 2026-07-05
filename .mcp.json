@@ -1,7 +1,0 @@
-{
-  "mcpServers": {
-    "turbovault": {
-      "command": "/home/tim/.cargo/bin/turbovault"
-    }
-  }
-}
