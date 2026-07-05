@@ -121,9 +121,16 @@ best behaviour (source verification, arithmetic decomposition, sign-checking, di
 the judge) was emergent from a diligent agent, not guaranteed by the skill text. A weaker
 model would relay the judge's question and get rubber-stamped.
 *Fix:* encode the expected review depth explicitly (see F2, F4). *Caveat on this run's
-signal:* the "smoke test" frame leaked to the agent at Q18 (eval-awareness); the observed
-depth may partly reflect a strong model. Re-run the skill cold on a weaker model for the
-true floor.
+signal:* this run was driven by **Opus 4.8** (confirmed from the transcript; reasoning
+effort not recorded), and the "smoke test" frame leaked to the agent at Q18
+(eval-awareness) — so the observed depth might have been a strong-model artifact.
+**Resolved (2026-07-05):** re-ran the review+amend path cold on **Sonnet at medium effort**
+(see the hardening-validated note at the top). Sonnet reproduced the same discipline
+unprompted — re-caught both planted flaws, re-derived the under-citation-vs-overreach
+distinction, surfaced a new finding, and reasoned *better* than Opus on the hardest claim.
+Conclusion: the review quality is **skill-borne, not model-borne** — the rewritten skill
+carries the procedure. F8's own fix (encoding depth explicitly) still stands as
+belt-and-suspenders, but the concern that quality depended on a strong model is closed.
 
 **F4 — Encode the disposition axis the review actually converged on.**
 Not "nit vs error" and not "is it locatable" — the operative test is **"does leaving it in
