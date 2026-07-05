@@ -1,4 +1,4 @@
-# tlddr
+# tl;ddr
 
 [![tests](https://github.com/TimEvans/tlddr/actions/workflows/tests.yml/badge.svg)](https://github.com/TimEvans/tlddr/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -22,6 +22,21 @@ with page-level citations.
 > drafted against a 42-section annual-report template.
 
 ## How it works
+
+```mermaid
+flowchart TD
+    docs["Source documents<br/>Word · Excel · PDF"] --> extract["Extract<br/>route by signal type"]
+    extract --> understand["Understand<br/>describe · tag · link into vault"]
+    understand --> draft["Draft<br/>grounded, page-cited claims"]
+    draft --> verify["Verify + Assemble<br/>independent judge · deterministic roll-up"]
+    verify --> report["Attributed report"]
+    verify --> sidecar["Reviewer sidecar<br/>provenance · gaps · open questions"]
+
+    understand -.->|"can't understand"| gaps{{"Honest gaps<br/>(quarantine)"}}
+    draft -.->|"no evidence"| gaps
+
+    sidecar -.->|"sign off · re-run<br/>affected nodes / sections"| understand
+```
 
 A four-stage pipeline over a shared vault, with quarantine as a cross-cutting channel for
 anything the tool cannot understand or has no evidence for:
