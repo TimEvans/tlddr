@@ -1,6 +1,8 @@
 # tlddr
 
 [![tests](https://github.com/TimEvans/tlddr/actions/workflows/tests.yml/badge.svg)](https://github.com/TimEvans/tlddr/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 
 **Template-driven report generation, grounded in a source corpus.**
 
