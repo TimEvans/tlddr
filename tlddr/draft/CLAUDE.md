@@ -1,6 +1,6 @@
 # tlddr/draft - Module Index
 
-**Last Updated:** 2026-06-30
+**Last Updated:** 2026-07-03
 
 The deterministic Draft toolkit (stage 3, in progress). The model drafts + judges via skills; these helpers validate citations, score groundedness, and render the published draft + reviewer sidecar. Page-addressing decision A (synthetic page 1 for page-less docs; explicit page numbers for multi-page). No model calls here. The two host-agent procedures live in `skills/` (`draft`, `draft-verify`).
 
@@ -17,8 +17,15 @@ The deterministic Draft toolkit (stage 3, in progress). The model drafts + judge
 
 ### claims.py
 **Purpose:** Machine-trust citation validation.
-**Key Functions:** `validate_claims(raw_claims, docs, nodes) -> (valid_claims, findings)` (for each claim, resolve citations to real pages + looked-up source_confidence; zero-citation claims dropped with finding)
-**Dependencies:** tlddr.models (ExtractedDoc, Node, DraftClaim, Citation, SupportLevel, EvidenceRelation, Question), pages
+**Key Functions:**
+- `_claim_id(section_id, text) -> str` - durable surrogate id, minted from `sha1(section_id \0 text)[:8]`; called once at first commit, then frozen
+- `validate_claims(raw_claims, docs, nodes, known_section_ids=None) -> (valid_claims, findings)` - for each claim, resolve citations to real pages + looked-up source_confidence; zero-citation claims (and claims tagged to an unknown section id, when `known_section_ids` is given) dropped with a finding; assigns each claim's `id` via `raw.get("id") or _claim_id(section_id, text)` — an explicit incoming `id` (e.g. from an amendment) is preserved
+**Dependencies:** tlddr.models (ExtractedDoc, Node, DraftClaim, Citation, SupportLevel, EvidenceRelation, Question), pages, hashlib
+
+### amend.py
+**Purpose:** The surgical re-pass — apply claim-level edits without regenerating a whole section.
+**Key Functions:** `apply_amendments(records, claims, docs, nodes, known_section_ids=None) -> (updated_claims, amended_ids, dropped_messages)` - applies each record's `set_text`/`set_support`/`set_evidence`/`add_pages` onto its target claim (matched by `claim_id`) and re-validates the whole amended claim through `validate_claims` (the same grounding checks as `draft-commit`); an unknown `claim_id`, an invalid `set_support`/`set_evidence` value, or a re-validation failure is drop-and-reported and the claim is left as-is
+**Dependencies:** tlddr.models (DraftClaim, ExtractedDoc, Node, SupportLevel, EvidenceRelation), claims (validate_claims)
 
 ### eval.py
 **Purpose:** Tier-B groundedness scoring and section coverage analysis.
@@ -29,15 +36,15 @@ The deterministic Draft toolkit (stage 3, in progress). The model drafts + judge
 
 ### verify.py
 **Purpose:** Ingest C-lite judge verdicts and raise reconciliation questions.
-**Key Functions:** `ingest_verdicts(verdicts, claims) -> list[Question]` (raised_by="verify" on judge downgrade or contradiction)
+**Key Functions:** `ingest_verdicts(verdicts, claims, suppress_ids=None) -> list[Question]` - verdicts are keyed on `claim_id` (looked up against the committed claims); a judge downgrade or `contradiction: true` raises a `raised_by="verify"` question whose id is `verify-{claim_id}-{reason}` (`reason` is `downgrade` or `contradiction`) — that id is the dedup key, both within a batch and against `suppress_ids` (question ids the caller already considers resolved), so a re-verify does not re-raise a settled question
 **Dependencies:** tlddr.models (DraftClaim, SupportLevel, Question)
 
 ### assemble.py
 **Purpose:** Deterministically render published draft + reviewer sidecar (no provenance leak to report.md).
 **Key Functions:**
 - `render_published(sections, claims) -> str` - clean markdown report (one section per heading, claims joined with space)
-- `render_sidecar(sections, claims, questions) -> str` - markdown sidecar (provenance, warnings, inferences, open questions per section; no-evidence sections called out)
-**Dependencies:** tlddr.models (DraftClaim, Section, Question, SupportLevel, EvidenceRelation, Confidence), eval
+- `render_sidecar(sections, claims, questions) -> str` - markdown sidecar (provenance, warnings, inferences, open questions per section; no-evidence sections called out); reads each question's `status`: `open` questions render per section as open questions; `accepted` questions render as "Disclosed caveats (accepted findings)" (raising stage + recorded answer); `revise_pending`/`revise_applied` questions are hidden from the sidecar (superseded by the pending or applied re-pass — `cli.py: assemble` separately warns to stdout on any question still `revise_pending`)
+**Dependencies:** tlddr.models (DraftClaim, Section, Question, QuestionStatus, SupportLevel, EvidenceRelation, Confidence), eval
 
 ### __init__.py
 **Purpose:** Empty package marker.

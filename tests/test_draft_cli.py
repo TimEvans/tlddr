@@ -65,10 +65,11 @@ def _commit_claims(tmp_path, base):
 def test_draft_verify_commit_is_idempotent(tmp_path):
     base = _setup(tmp_path)
     _commit_claims(tmp_path, base)
+    claim_id = json.loads((base / "work" / "claims.json").read_text())[0]["id"]
 
     verdicts_file = tmp_path / "verdicts.json"
     verdicts_file.write_text(json.dumps([{
-        "index": 0, "support_level": "unsupported", "contradiction": False,
+        "claim_id": claim_id, "support_level": "unsupported", "contradiction": False,
         "note": "not actually stated",
     }]))
 
@@ -105,3 +106,30 @@ def test_draft_commit_is_idempotent_with_unknown_sections(tmp_path):
     qs = json.loads((base / "work" / "questions.json").read_text())
     draft_qs = [q for q in qs if q.get("raised_by") == "draft" and q.get("section_id") == "s_unknown"]
     assert len(draft_qs) == 1
+
+
+def test_draft_commit_assigns_ids_to_legacy_claims(tmp_path):
+    base = _setup(tmp_path)
+    work = base / "work"
+
+    legacy_claim = {
+        "section_id": "s2", "text": "Legacy claim.",
+        "support_level": "fully_supported", "evidence_relation": "quoted",
+        "sources": [{"node_id": "r518", "page": 12}],
+    }
+    (work / "claims.json").write_text(json.dumps([legacy_claim]))
+
+    claims_file = tmp_path / "claims.json"
+    claims_file.write_text(json.dumps([{
+        "section_id": "s1", "text": "Design life is 25 years.",
+        "support_level": "fully_supported", "evidence_relation": "quoted",
+        "sources": [{"node_id": "r518", "page": 12}],
+    }]))
+
+    main(["draft-commit", "--claims", str(claims_file), "--output", str(base)])
+
+    committed = json.loads((work / "claims.json").read_text())
+    for claim in committed:
+        assert claim["id"] != ""
+        assert claim["id"].startswith("claim-")
+        assert len(claim["id"]) >= 11

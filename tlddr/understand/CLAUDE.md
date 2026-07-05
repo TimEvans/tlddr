@@ -1,6 +1,6 @@
 # tlddr/understand - Module Index
 
-**Last Updated:** 2026-06-30
+**Last Updated:** 2026-07-03
 
 The deterministic Understand toolkit (stage 2, merged and proven end-to-end). The host agent does comprehension, section-tagging, and edge proposal and hands enrichment JSON to the CLI; these helpers do everything deterministic: build the slice the agent reads, score confidence, validate edges and section tags (machine-trust), derive triage, assemble a `Node`, render the vault with section-coverage + isolated-node surfaces. The node is an overlay over the `ExtractedDoc` store, never a content clone. No model calls here. The two host-agent procedures live in `skills/` (`generate-sections`, `understand`).
 
@@ -43,7 +43,8 @@ The deterministic Understand toolkit (stage 2, merged and proven end-to-end). Th
 - `render_index(nodes) -> str` - markdown table (wikilink, doc_type, triage), sorted by id
 - `section_coverage(nodes, sections) -> dict[str, list[str]]` - section id -> tagged node ids
 - `isolated_nodes(nodes) -> list[str]` - nodes with no outgoing edge and not the target of any edge
-- `render_triage(nodes, questions, sections=None) -> str` - nodes grouped Red/Amber/Green; `## Section coverage` (no-evidence called out, only when sections given) + `## Isolated documents`, both before `## Open questions`; questions with `> answer:` slots
+- `_display_triage(node, questions) -> Triage` - re-derives a node's triage from its still-unresolved questions only, so a resolved blocking question visibly de-escalates the node on render without mutating the stored `node.triage`
+- `render_triage(nodes, questions, sections=None) -> str` - nodes grouped Red/Amber/Green by `_display_triage`; `## Section coverage` (no-evidence called out, only when sections given) + `## Isolated documents`, both before the question sections; questions split into `## Open questions` (unresolved, with `> answer:` slots) and `## Resolved questions` (resolved, showing disposition + the recorded answer, no slot)
 **Constants:** `_GROUP_ORDER`, `_GROUP_TITLE`
 
 ### commit.py

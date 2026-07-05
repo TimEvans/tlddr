@@ -152,3 +152,11 @@ Stop. Ask the user to open `$TLDDR_OUTPUT/vault/` and `$TLDDR_OUTPUT/vault/_tria
 - Coverage observations are useful.
 
 Do not proceed to any downstream stages until the user approves.
+
+## Re-pass mode (answer loop)
+
+When re-understanding a node named in a `worklist.json` entry, read that entry's
+`guidance` field and treat it as Reviewer instruction — a signed-off answer to an
+earlier question about this document. Re-comprehend with it in context, then
+`understand-commit`. If your re-tagging changes the node's `report_sections`, note the
+affected sections so the Reviewer can decide whether to re-draft them; do not assume it.

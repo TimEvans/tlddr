@@ -88,6 +88,18 @@ class EvidenceRelation(str, Enum):
     INFERRED = "inferred"
 
 
+class Disposition(str, Enum):
+    REVISE = "revise"      # answer routes to a re-pass
+    ACCEPT = "accept"      # acknowledged finding; no re-pass; disclosed as a caveat
+
+
+class QuestionStatus(str, Enum):
+    OPEN = "open"                      # unanswered
+    ACCEPTED = "accepted"              # answered accept — terminal; disclosed as a caveat
+    REVISE_PENDING = "revise_pending"  # answered revise — awaiting its re-pass
+    REVISE_APPLIED = "revise_applied"  # re-pass executed — terminal
+
+
 class Citation(BaseModel):
     node_id: str
     page: int
@@ -95,6 +107,7 @@ class Citation(BaseModel):
 
 
 class DraftClaim(BaseModel):
+    id: str = ""                       # durable surrogate, assigned at first commit, frozen
     section_id: str
     text: str
     sources: list[Citation] = Field(default_factory=list)
@@ -107,10 +120,12 @@ class Question(BaseModel):
     raised_by: str
     node_id: str | None = None
     section_id: str | None = None
+    claim_id: str | None = None        # verify questions link to their claim
     question: str
     blocks: list[str] = Field(default_factory=list)
     blocking: bool = False
     answer: str | None = None
+    status: QuestionStatus = QuestionStatus.OPEN
 
 
 class Node(BaseModel):

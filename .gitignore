@@ -13,3 +13,21 @@ output/
 # Brainstorm visual-companion scratch
 .superpowers/
 /chevron/
+
+# Python build/tooling
+build/
+dist/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+
+# Local editor / OS
+.DS_Store
+*.swp
+
+# Claude local (personal, machine-specific)
+.claude/settings.local.json
+
+# Secrets (belt-and-suspenders)
+.env
+.env.*

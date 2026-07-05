@@ -1,7 +1,7 @@
 from tlddr.understand.render import (
     render_index, render_triage, section_coverage, isolated_nodes,
 )
-from tlddr.models import Node, Question, Confidence, Triage, Section, Edge, RelationType
+from tlddr.models import Node, Question, Confidence, Triage, Section, Edge, RelationType, QuestionStatus
 
 
 def _node(id, triage):
@@ -85,3 +85,47 @@ def test_triage_renders_section_coverage_and_no_evidence():
     # Open questions stays the final section
     assert md.index("## Section coverage") < md.index("## Open questions")
     assert md.index("## Isolated documents") < md.index("## Open questions")
+
+
+def test_triage_separates_open_and_resolved():
+    nodes = [_node("a", Triage.GREEN)]
+    open_q = Question(id="v-1", raised_by="verify", section_id="s1",
+                      question="Open question here?")
+    resolved_q = Question(id="v-2", raised_by="verify", section_id="s1",
+                          question="Resolved question here?", answer="Yes, keep it.",
+                          status=QuestionStatus.ACCEPTED)
+    md = render_triage(nodes, [open_q, resolved_q])
+
+    assert "## Open questions" in md
+    assert "## Resolved questions" in md
+    open_block = md.split("## Open questions")[1].split("## Resolved questions")[0]
+    resolved_block = md.split("## Resolved questions")[1]
+
+    assert "Open question here?" in open_block
+    assert "> answer:" in open_block
+    assert "Resolved question here?" not in open_block   # resolved not in Open
+
+    assert "(accepted)" in resolved_block
+    assert "Yes, keep it." in resolved_block
+
+
+def test_triage_omits_resolved_section_when_none():
+    md = render_triage([_node("a", Triage.GREEN)], [])
+    assert "## Resolved questions" not in md
+
+
+def test_resolving_blocking_question_deescalates_node():
+    # a node stored GREEN with a live blocking question re-derives to RED...
+    node = _node("a", Triage.GREEN)
+    blocking = Question(id="u-1", raised_by="understand", node_id="a",
+                        question="Blocked on which spec?", blocking=True)
+    red_md = render_triage([node], [blocking])
+    red_block = red_md.split("## Red")[1].split("## Amber")[0]
+    assert "[[a]]" in red_block
+    # ...and once resolved, it drops out of Red (de-escalation is visible)
+    resolved = Question(id="u-1", raised_by="understand", node_id="a",
+                        question="Blocked on which spec?", blocking=False,
+                        answer="Spec v3.", status=QuestionStatus.REVISE_PENDING)
+    green_md = render_triage([node], [resolved])
+    green_red_block = green_md.split("## Red")[1].split("## Amber")[0]
+    assert "[[a]]" not in green_red_block

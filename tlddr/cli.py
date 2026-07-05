@@ -10,17 +10,19 @@ from tlddr.extract.base import ExtractContext
 from tlddr.extract.router import route
 from tlddr.extract.report import render_report
 from tlddr.ids import doc_id, sha256_file
-from tlddr.models import ExtractedDoc, Node, Question, SignalType, Section, DraftClaim
+from tlddr.models import ExtractedDoc, Node, Question, QuestionStatus, SignalType, Section, DraftClaim
 from tlddr.understand.slice import build_slice
 from tlddr.understand.commit import build_node
 from tlddr.understand.sections import load_sections, section_ids
 from tlddr.understand.node_render import render_node_markdown
 from tlddr.understand.render import render_index, render_triage
 from tlddr.draft.read import build_read
-from tlddr.draft.claims import validate_claims
+from tlddr.draft.claims import validate_claims, _claim_id
+from tlddr.draft.amend import apply_amendments
 from tlddr.draft.eval import groundedness_readout
 from tlddr.draft.verify import ingest_verdicts
 from tlddr.draft.assemble import render_published, render_sidecar
+from tlddr.answer import ingest_answers, parse_triage_answers
 from tlddr import bench
 
 
@@ -173,9 +175,13 @@ def understand_commit(enrichment_path: Path, extracted_dir: Path, out_dir: Path,
 
     questions_path = out_dir / "questions.json"
     existing = json.loads(questions_path.read_text()) if questions_path.exists() else []
-    existing = [q for q in existing if q.get("node_id") != node.id]  # replace this node's prior questions
+    # drop only this node's OPEN questions (regenerated fresh below); preserve answered ones
+    # so the _apply_revises call below can flip REVISE_PENDING -> REVISE_APPLIED
+    existing = [q for q in existing
+                if q.get("node_id") != node.id or q.get("status", "open") != "open"]
     existing.extend(q.model_dump(mode="json") for q in questions)
     questions_path.write_text(json.dumps(existing, indent=2))
+    _apply_revises(out_dir, lambda q, nid=node.id: q.node_id == nid)
 
     for d in dropped_edges:
         print(f"dropped edge {node.id} -> {d.target} ({d.relation.value}): target not in node set")
@@ -219,6 +225,18 @@ def _append_questions(work_dir: Path, new: list,
     path.write_text(json.dumps(existing, indent=2))
 
 
+def _apply_revises(work_dir: Path, match) -> None:
+    """Flip REVISE_PENDING -> REVISE_APPLIED for questions the given predicate selects."""
+    path = work_dir / "questions.json"
+    if not path.exists():
+        return
+    questions = [Question.model_validate(q) for q in json.loads(path.read_text())]
+    for q in questions:
+        if q.status is QuestionStatus.REVISE_PENDING and match(q):
+            q.status = QuestionStatus.REVISE_APPLIED
+    path.write_text(json.dumps([q.model_dump(mode="json") for q in questions], indent=2))
+
+
 def draft_read(extracted_dir: Path, node_id: str, pages: list[int] | None) -> str:
     return build_read(_load_doc(extracted_dir, node_id), pages=pages)
 
@@ -235,21 +253,117 @@ def draft_commit(claims_path: Path, extracted_dir: Path, work_dir: Path,
     submitted_sections = {r["section_id"] for r in raw}
     committed = [c for c in _load_claims(work_dir) if c.section_id not in submitted_sections]
     committed.extend(valid)
+    for c in committed:
+        if not c.id:
+            c.id = _claim_id(c.section_id, c.text)
+    seen: dict[str, int] = {}
+    for c in committed:
+        if c.id in seen:
+            seen[c.id] += 1
+            c.id = f"{c.id}-{seen[c.id]}"
+        else:
+            seen[c.id] = 1
     (work_dir / "claims.json").write_text(
         json.dumps([c.model_dump(mode="json") for c in committed], indent=2))
     for section in submitted_sections:
         _append_questions(work_dir, [],
                           drop=lambda q, s=section: q.get("raised_by") == "draft" and q.get("section_id") == s)
     _append_questions(work_dir, findings)
+    for section in submitted_sections:
+        _apply_revises(work_dir, lambda q, s=section: q.section_id == s)
     print(f"committed {len(valid)} claims, {len(findings)} findings")
     return valid
 
 
+def draft_amend(amendments_path: Path, extracted_dir: Path, work_dir: Path,
+                sections_path: Path | None = None) -> None:
+    records = json.loads(amendments_path.read_text())
+    docs = {p.stem: _load_doc(extracted_dir, p.stem) for p in extracted_dir.glob("*.json")}
+    nodes = {n.id: n for n in (Node.model_validate_json(p.read_text())
+                               for p in (work_dir / "nodes").glob("*.json"))}
+    known_section_ids = section_ids(load_sections(sections_path)) if sections_path else None
+    claims = _load_claims(work_dir)
+    updated, amended, dropped = apply_amendments(records, claims, docs, nodes, known_section_ids)
+    (work_dir / "claims.json").write_text(
+        json.dumps([c.model_dump(mode="json") for c in updated], indent=2))
+
+    questions_path = work_dir / "questions.json"
+    questions = ([Question.model_validate(q) for q in json.loads(questions_path.read_text())]
+                 if questions_path.exists() else [])
+    flipped = 0
+    for q in questions:
+        if (q.claim_id in amended and q.status is QuestionStatus.REVISE_PENDING):
+            q.status = QuestionStatus.REVISE_APPLIED
+            flipped += 1
+    questions_path.write_text(json.dumps([q.model_dump(mode="json") for q in questions], indent=2))
+    for message in dropped:
+        print(f"dropped amendment: {message}")
+    print(f"amended {len(amended)} claims, applied {flipped} revise question(s)")
+
+
 def draft_verify_commit(verdicts_path: Path, work_dir: Path) -> None:
     verdicts = json.loads(verdicts_path.read_text())
-    questions = ingest_verdicts(verdicts, _load_claims(work_dir))
-    _append_questions(work_dir, questions, drop=lambda q: q.get("raised_by") == "verify")
-    print(f"raised {len(questions)} verify questions")
+    questions_path = work_dir / "questions.json"
+    existing = ([Question.model_validate(q) for q in json.loads(questions_path.read_text())]
+                if questions_path.exists() else [])
+    suppress_ids = {q.id for q in existing if q.status is not QuestionStatus.OPEN}
+    new_qs = ingest_verdicts(verdicts, _load_claims(work_dir), suppress_ids)
+    _append_questions(
+        work_dir, new_qs,
+        drop=lambda q: q.get("raised_by") == "verify" and q.get("status", "open") == "open")
+    print(f"raised {len(new_qs)} verify questions")
+
+
+def _format_worklist(worklist: dict) -> str:
+    lines = ["RE-PASS WORKLIST"]
+    if worklist["sections"]:
+        lines.append("Section re-passes (re-draft -> re-verify):")
+        for s in worklist["sections"]:
+            lines.append(f"  - {s['section_id']}   from: {', '.join(s['from'])}")
+            lines.append(f"    guidance: {s['guidance']}")
+    if worklist["nodes"]:
+        lines.append("Node re-passes (re-understand):")
+        for n in worklist["nodes"]:
+            lines.append(f"  - {n['node_id']}   from: {', '.join(n['from'])}")
+            lines.append(f"    guidance: {n['guidance']}")
+    if not worklist["sections"] and not worklist["nodes"]:
+        lines.append("(nothing to re-pass)")
+    return "\n".join(lines)
+
+
+def _bump_repass_log(work_dir: Path, worklist: dict) -> None:
+    path = work_dir / "repass_log.json"
+    log = json.loads(path.read_text()) if path.exists() else {}
+    for item in worklist["sections"]:
+        log[item["section_id"]] = log.get(item["section_id"], 0) + 1
+    for item in worklist["nodes"]:
+        log[item["node_id"]] = log.get(item["node_id"], 0) + 1
+    path.write_text(json.dumps(log, indent=2))
+
+
+def answer_commit(answers_path: Path | None, triage_path: Path | None, work_dir: Path,
+                  sections_path: Path | None = None, vault_dir: Path | None = None) -> None:
+    questions_path = work_dir / "questions.json"
+    questions = ([Question.model_validate(q) for q in json.loads(questions_path.read_text())]
+                 if questions_path.exists() else [])
+    if triage_path is not None:
+        records, skipped = parse_triage_answers(triage_path.read_text())
+        for qid in skipped:
+            print(f"skipped slot for '{qid}': filled but no [revise]/[accept] tag")
+    else:
+        records = json.loads(answers_path.read_text())
+
+    updated, worklist, dropped = ingest_answers(records, questions)
+    for message in dropped:
+        print(f"dropped answer: {message}")
+    questions_path.write_text(
+        json.dumps([q.model_dump(mode="json") for q in updated], indent=2))
+    (work_dir / "worklist.json").write_text(json.dumps(worklist, indent=2))
+    _bump_repass_log(work_dir, worklist)
+    print(_format_worklist(worklist))
+
+    if vault_dir is not None:
+        understand_render(work_dir, vault_dir, sections_path)
 
 
 def draft_eval(work_dir: Path, sections_path: Path, benchmark: Path | None = None) -> None:
@@ -265,6 +379,18 @@ def assemble(work_dir: Path, out_dir: Path, sections_path: Path,
         questions_path = work_dir / "questions.json"
         questions = ([Question.model_validate(q) for q in json.loads(questions_path.read_text())]
                      if questions_path.exists() else [])
+        pending = [q for q in questions if q.status is QuestionStatus.REVISE_PENDING]
+        for q in pending:
+            target = q.section_id or q.node_id or q.claim_id
+            print(f"warning: {q.id} is revise_pending with no re-pass applied "
+                  f"(target {target})")
+        repass_log_path = work_dir / "repass_log.json"
+        if repass_log_path.exists():
+            log = json.loads(repass_log_path.read_text())
+            for target, count in sorted(log.items()):
+                if count >= 3:
+                    print(f"warning: '{target}' has cycled {count} times "
+                          f"through the answer loop")
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "report.md").write_text(render_published(sections, claims))
         (out_dir / "report_comments.md").write_text(render_sidecar(sections, claims, questions))
@@ -325,9 +451,20 @@ def main(argv: list[str] | None = None) -> int:
     dcommit.add_argument("--claims", required=True, type=Path)
     dcommit.add_argument("--output", type=Path, default=None)
 
+    damend = sub.add_parser("draft-amend", help="apply validated claim-level edits (the re-pass)")
+    damend.add_argument("--amendments", required=True, type=Path)
+    damend.add_argument("--output", type=Path, default=None)
+
     dverify = sub.add_parser("draft-verify-commit", help="ingest C-lite judge verdicts")
     dverify.add_argument("--verdicts", required=True, type=Path)
     dverify.add_argument("--output", type=Path, default=None)
+
+    acommit = sub.add_parser("answer-commit",
+                             help="ingest reviewer answers and build the re-pass worklist")
+    asrc = acommit.add_mutually_exclusive_group(required=True)
+    asrc.add_argument("--answers", type=Path, default=None)
+    asrc.add_argument("--triage", type=Path, default=None)
+    acommit.add_argument("--output", type=Path, default=None)
 
     deval = sub.add_parser("draft-eval", help="print the tier-B groundedness readout")
     deval.add_argument("--output", type=Path, default=None)
@@ -387,9 +524,19 @@ def main(argv: list[str] | None = None) -> int:
         sections = paths.sections if paths.sections.exists() else None
         draft_commit(args.claims, paths.extracted, paths.work, sections)
         return 0
+    if args.command == "draft-amend":
+        paths = Paths(resolve_base(args.output))
+        sections = paths.sections if paths.sections.exists() else None
+        draft_amend(args.amendments, paths.extracted, paths.work, sections)
+        return 0
     if args.command == "draft-verify-commit":
         paths = Paths(resolve_base(args.output))
         draft_verify_commit(args.verdicts, paths.work)
+        return 0
+    if args.command == "answer-commit":
+        paths = Paths(resolve_base(args.output))
+        sections = paths.sections if paths.sections.exists() else None
+        answer_commit(args.answers, args.triage, paths.work, sections, paths.vault)
         return 0
     if args.command == "draft-eval":
         paths = Paths(resolve_base(args.output))
