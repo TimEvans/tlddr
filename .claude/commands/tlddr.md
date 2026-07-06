@@ -21,7 +21,9 @@ current directory. Then branch on the first token of `$ARGUMENTS`:
 - **no verb (bare `/tlddr`)** → the interactive launcher, section **A**.
 - **`status`** → run `.venv/bin/tlddr status --output <base>`, show it, stop.
 - **`resume`** → run `tlddr status`, then run every stage from the reported `resume point:`
-  through to the end, non-interactively (section **C**).
+  onward (section **C**). The pipeline stages run non-interactively; `review` is inherently
+  interactive, so when a resume reaches (or starts at) `review`, hand off to the interactive
+  answer loop (`skills/review/SKILL.md`) rather than autopiloting through it.
 - **a stage verb** (`extract` / `understand` / `draft` / `verify` / `assemble` / `review`)
   → run just that one stage (section **B**), then stop.
 - **anything else** → run `tlddr status` and list the valid verbs.
