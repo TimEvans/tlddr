@@ -46,7 +46,9 @@ A **review / answer loop** closes the cycle: a reviewer signs off the open quest
 
 The deterministic steps are `tlddr` CLI commands. The model-driven stages (Understand,
 Draft, Verify, Review) are run by an agent following the procedures in `skills/`, so every
-stage is separately runnable and inspectable.
+stage is separately runnable and inspectable. A `/tlddr` launcher sequences the whole
+pipeline for you and records progress in a deterministic run-state manifest, so a run can
+be resumed from wherever it stopped.
 
 ## Install
 
@@ -59,30 +61,58 @@ uv sync --extra dev    # include dev extras (pytest)
 
 ## Usage
 
-Every command derives its paths from a single `--output` base directory (or the
-`TLDDR_OUTPUT` environment variable), so a run's work, vault, and report stay bundled and a
-second run never clobbers the first:
+### The launcher (recommended)
+
+Inside a Claude Code session, one command runs or resumes the whole pipeline:
+
+```
+/tlddr
+```
+
+It asks only for the essentials — where your documents are, an output directory, and a
+preset — then runs the stages end to end, pausing for your sign-off where the preset says
+to. On an existing run it offers to **resume** from wherever you left off. Presets bundle
+the model / effort / interaction settings:
+
+- `quick` (recommended) — fast, lower-cost first pass; runs to completion, then surfaces
+  the review queue.
+- `careful` — higher-rigour pass that pauses between stages for review.
+
+Check progress or the resume point at any time:
 
 ```bash
-export TLDDR_OUTPUT=myrun                  # work/, vault/, report/ nest under ./myrun
+uv run tlddr status
+```
 
-uv run tlddr extract --source <docs-dir>
+### The CLI (deterministic stages)
+
+Every deterministic step is a `tlddr` subcommand you can run directly. Paths derive from a
+single output base — the current directory by default, or set `--output <dir>` (or the
+`TLDDR_OUTPUT` env var) — so a run stays bundled and a second run never clobbers the first:
+
+```bash
+uv run tlddr extract --source <docs-dir> --output myrun
 uv run tlddr --help                        # full command list
 ```
 
-The model-driven stages are driven by the matching skill in `skills/` (`understand`,
-`generate-sections`, `draft`, `draft-verify`, `review`), each of which documents the
-command sequence for that stage.
+The model-driven stages (`understand`, `generate-sections`, `draft`, `draft-verify`,
+`review`) are run by the host agent following the matching procedure in `skills/`; the
+launcher simply sequences these for you. Configuration is saved to `tlddr.toml` at the top
+of the output base — edit its `[overrides]` table to pin a setting (model, effort, …)
+across runs, or pass flags to `tlddr config`.
 
 ## Output
 
-A completed run produces, under your `--output` base:
+A completed run produces, under your output base (the current directory by default):
 
 - `report/report.md` — the attributed draft, claims cited to source page.
 - `report/report_comments.md` — reviewer sidecar: provenance, inferences, no-evidence
   gaps, and the open questions to resolve.
 - `vault/` — the linked, triaged understand vault (`_index.md`, `_triage.md`).
-- `work/` — the claim, verdict, and question stores.
+- `tlddr.toml` — the run's configuration (editable).
+- `.tlddr/` — hidden working state: extracted content, the claim / verdict / question
+  stores, and the run-state manifest (`state_lock.json`). Read it via `tlddr status`
+  rather than by hand.
 
 ## License
 
