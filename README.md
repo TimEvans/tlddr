@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.png" width="260" alt="tl;ddr">
+  <img src="logo.png" width="240" alt="tl;ddr">
 </p>
 
 [![tests](https://github.com/TimEvans/tlddr/actions/workflows/tests.yml/badge.svg)](https://github.com/TimEvans/tlddr/actions/workflows/tests.yml)
