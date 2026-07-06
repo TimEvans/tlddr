@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from tlddr import runstate
+from tlddr import config as tlddr_config
 from tlddr.status import render_status
 from tlddr.extract.base import ExtractContext
 from tlddr.extract.router import route
@@ -454,6 +455,26 @@ def mark_stage_cmd(base: Path, stage: str) -> None:
     print(f"marked {stage} done")
 
 
+def config_cmd(base: Path, preset: str | None, corpus: str | None, model: str | None,
+               effort: str | None, interaction: str | None, benchmark: bool | None) -> None:
+    paths = Paths(base)
+    toml_cfg = tlddr_config.read_toml(paths.config)
+    overrides = {"corpus": corpus, "output": str(base), "model": model,
+                 "effort": effort, "interaction": interaction, "benchmark": benchmark}
+    cfg = tlddr_config.resolve_config(preset, overrides, toml_cfg)
+    # persist human config (top-level + overrides table for any non-preset axis values)
+    persist = {"corpus": cfg.get("corpus"), "output": cfg.get("output"),
+               "preset": cfg.get("preset"), "overrides": {a: cfg[a] for a in
+               ("model", "effort", "interaction", "benchmark") if a in cfg}}
+    tlddr_config.write_toml(paths.config, {k: v for k, v in persist.items() if v is not None})
+    fp = runstate.corpus_fingerprint(Path(cfg["corpus"])) if cfg.get("corpus") else ""
+    runstate.init_state(paths.state_lock, cfg, fp)
+    print("resolved config:")
+    for k in ("corpus", "output", "preset", "model", "effort", "interaction", "benchmark"):
+        if k in cfg:
+            print(f"  {k}: {cfg[k]}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="tlddr")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -515,6 +536,15 @@ def main(argv: list[str] | None = None) -> int:
     ms = sub.add_parser("mark-stage", help="record a stage as done in the run state")
     ms.add_argument("stage", choices=runstate.STAGES)
     ms.add_argument("--output", type=Path, default=None)
+
+    cfg_cmd = sub.add_parser("config", help="resolve + persist run configuration (presets + overrides)")
+    cfg_cmd.add_argument("--preset", choices=list(tlddr_config.PRESETS), default=None)
+    cfg_cmd.add_argument("--corpus", default=None)
+    cfg_cmd.add_argument("--model", choices=["sonnet", "opus"], default=None)
+    cfg_cmd.add_argument("--effort", choices=["low", "medium", "high"], default=None)
+    cfg_cmd.add_argument("--interaction", choices=["autonomous", "guided"], default=None)
+    cfg_cmd.add_argument("--benchmark", dest="benchmark", action="store_true", default=None)
+    cfg_cmd.add_argument("--output", type=Path, default=None)
 
     bench_cmd = sub.add_parser("bench", help="record and report run benchmarks")
     bench_sub = bench_cmd.add_subparsers(dest="bench_command", required=True)
@@ -593,6 +623,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "mark-stage":
         mark_stage_cmd(resolve_base(args.output), args.stage)
+        return 0
+    if args.command == "config":
+        config_cmd(resolve_base(args.output), args.preset, args.corpus, args.model,
+                   args.effort, args.interaction, args.benchmark)
         return 0
     if args.command == "bench":
         if args.bench_command == "record":
