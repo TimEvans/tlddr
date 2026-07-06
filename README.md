@@ -78,10 +78,15 @@ the model / effort / interaction settings:
   the review queue.
 - `careful` — higher-rigour pass that pauses between stages for review.
 
-Check progress or the resume point at any time:
+The launcher is one command with a small family of verbs — a single, consistent surface,
+whether a stage runs deterministic code or an agent underneath:
 
-```bash
-uv run tlddr status
+```
+/tlddr                 # interactive: configure if needed, then run or resume
+/tlddr draft           # run (or re-run) just one stage: extract | understand |
+                       #   draft | verify | assemble | review
+/tlddr status          # show progress and the resume point
+/tlddr resume          # continue from the resume point to the end
 ```
 
 ### The CLI (deterministic stages)
