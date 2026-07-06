@@ -58,10 +58,10 @@
   </g>
 
   <!-- flow arrows between stages -->
-  <line x1="242" y1="128" x2="248" y2="128" stroke="#0F6E56" stroke-width="2" marker-end="url(#ah)"/>
-  <line x1="384" y1="128" x2="390" y2="128" stroke="#0F6E56" stroke-width="2" marker-end="url(#ah)"/>
-  <line x1="526" y1="128" x2="532" y2="128" stroke="#0F6E56" stroke-width="2" marker-end="url(#ah)"/>
-  <line x1="668" y1="128" x2="674" y2="128" stroke="#0F6E56" stroke-width="2" marker-end="url(#ah)"/>
+  <line x1="242" y1="128" x2="252" y2="128" stroke="#0F6E56" stroke-width="2" marker-end="url(#ah)"/>
+  <line x1="384" y1="128" x2="394" y2="128" stroke="#0F6E56" stroke-width="2" marker-end="url(#ah)"/>
+  <line x1="526" y1="128" x2="536" y2="128" stroke="#0F6E56" stroke-width="2" marker-end="url(#ah)"/>
+  <line x1="668" y1="128" x2="678" y2="128" stroke="#0F6E56" stroke-width="2" marker-end="url(#ah)"/>
 
   <!-- INPUT into bottom of stage 1 -->
   <path d="M176 214 L176 174" fill="none" stroke="#5F5E5A" stroke-width="2" marker-end="url(#ah)"/>
@@ -81,20 +81,20 @@
     <text x="318" y="353" text-anchor="middle" font-size="10.5" fill="#6B4406" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/tlddr review</text>
   </g>
 
-  <!-- Quarantine to the right of Review -->
+  <!-- Quarantine aligned under Verify, matching Verify width and Review height -->
   <g>
-    <rect x="412" y="308" width="150" height="46" rx="8" fill="#FCEBEB" stroke="#A32D2D" stroke-width="1.5"/>
-    <text x="487" y="329" text-anchor="middle" font-size="13" font-weight="600" fill="#501313">Quarantine</text>
-    <text x="487" y="344" text-anchor="middle" font-size="10" fill="#A32D2D">honest gaps</text>
+    <rect x="536" y="306" width="132" height="62" rx="8" fill="#FCEBEB" stroke="#A32D2D" stroke-width="1.5"/>
+    <text x="602" y="332" text-anchor="middle" font-size="13" font-weight="600" fill="#501313">Quarantine</text>
+    <text x="602" y="349" text-anchor="middle" font-size="10" fill="#A32D2D">honest gaps</text>
   </g>
 
   <!-- three dashed intakes into Quarantine: Understand, Draft, Verify -->
-  <path d="M340 170 L450 305" fill="none" stroke="#A32D2D" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#ah)"/>
-  <path d="M460 170 L480 305" fill="none" stroke="#A32D2D" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#ah)"/>
-  <path d="M602 170 L520 305" fill="none" stroke="#A32D2D" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#ah)"/>
+  <path d="M340 170 L560 303" fill="none" stroke="#A32D2D" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#ah)"/>
+  <path d="M460 170 L590 303" fill="none" stroke="#A32D2D" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#ah)"/>
+  <path d="M602 170 L602 300" fill="none" stroke="#A32D2D" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#ah)"/>
 
   <!-- single Quarantine -> Review -->
-  <line x1="412" y1="331" x2="388" y2="331" stroke="#A32D2D" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#ah)"/>
+  <line x1="536" y1="337" x2="388" y2="337" stroke="#A32D2D" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#ah)"/>
 
   <!-- re-pass loop-back: Review -> Understand, Review -> Draft -->
   <path d="M318 306 L318 172" fill="none" stroke="#BA7517" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#ah)"/>
