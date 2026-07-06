@@ -26,11 +26,11 @@ with page-level citations.
 ## How it works
 
 <p align="center">
-  <img src="pipeline.svg" width="640" alt="tlddr pipeline: Extract, Understand, Draft, Assemble with a Quarantine channel and Review loop">
+  <img src="pipeline.svg" width="640" alt="tlddr pipeline: Extract, Understand, Draft, Verify, Assemble, with a Quarantine channel and a Review loop">
 </p>
 
-A four-stage pipeline over a shared vault, with quarantine as a cross-cutting channel for
-anything the tool cannot understand or has no evidence for:
+Five stages over a shared vault, with quarantine as a cross-cutting channel for anything
+the tool cannot understand or has no evidence for, closed by a review loop:
 
 1. **Extract** — route each source document by *signal type* (does the meaning live in the
    text layer or the pixels?), not file extension, into extracted node stubs.
@@ -39,12 +39,13 @@ anything the tool cannot understand or has no evidence for:
 3. **Draft** — gather the nodes for each section and draft against it, emitting claims
    carrying `(node_id, page)` provenance. Thin or evidence-free sections become findings,
    not fabrications.
-4. **Verify + Assemble** — an independent judge pass flags contradictions and unsupported
-   claims, then a deterministic roll-up produces the attributed report plus a reviewer
+4. **Verify** — an independent judge pass re-checks each claim against its cited page,
+   flagging contradictions and unsupported claims; disagreements become open questions.
+5. **Assemble** — a deterministic roll-up produces the attributed report plus a reviewer
    sidecar of provenance, inferences, and open questions.
-
-A **review / answer loop** closes the cycle: a reviewer signs off the open questions and
-`tlddr` re-runs only the affected nodes or sections.
+6. **Review** — the reviewer works the open questions in the quarantine queue and signs off
+   each. Answering one routes a targeted re-pass (`/tlddr review`): `tlddr` re-runs only the
+   affected node or section, re-verifies, and re-assembles — repeating until it converges.
 
 The deterministic steps are `tlddr` CLI commands. The model-driven stages (Understand,
 Draft, Verify, Review) are run by an agent following the procedures in `skills/`, so every
