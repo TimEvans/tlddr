@@ -143,6 +143,18 @@ tlddr assemble \
 
 Writes `$TLDDR_OUTPUT/report/report.md` (the attributed draft, claims assembled under section headings) and `$TLDDR_OUTPUT/report/report_comments.md` (open findings and verify questions surfaced as inline comments). Also refreshes `$TLDDR_OUTPUT/vault/_triage.md` with all current questions (including draft and verify findings) so the D6 answer loop has an up-to-date answer surface. Share both report files with the user.
 
+## Benchmark recording (when enabled)
+
+If the run has benchmarking enabled (`benchmark = true` in `tlddr.toml`), record one row per
+section as its drafting subagent returns — the numbers are the subagent's own metering:
+
+    tlddr bench record --output "$TLDDR_OUTPUT" --stage draft --kind section \
+        --unit <section_id> --model <model> --tokens <subagent_tokens> \
+        --tools <tool_uses> --ms <duration_ms>
+
+The benchmark dir derives from `--output`. Skip a unit whose token count is unavailable
+rather than guessing.
+
 ## Proving Gate
 
 Honor the run's **interaction style** (read it via `tlddr status` or `tlddr.toml`). This gate

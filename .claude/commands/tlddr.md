@@ -69,9 +69,9 @@ blocking open question, or an unsupported claim / contradiction) stops even unde
 `autonomous`.
 
 ### 5. Finish
-End on `tlddr status`: rounds and quarantine counts, plus a per-stage token breakdown if
-benchmarking was enabled (off by default, so tokens are often blank). Surface any
-`assemble` warning about unapplied revises or 3+ cycles.
+End on `tlddr status`: rounds and quarantine counts, plus a per-stage token breakdown when
+benchmarking was enabled (populated by the per-unit `bench record` calls in the stage
+skills; off by default). Surface any `assemble` warning about unapplied revises or 3+ cycles.
 
 ---
 
@@ -84,7 +84,10 @@ bare `/tlddr` first. Otherwise, do the stage's work from the playbook (section *
 
 ## C. Stage playbook
 
-For each stage, do its work, then `.venv/bin/tlddr mark-stage <stage> --output <base>`:
+For each stage, do its work, then `.venv/bin/tlddr mark-stage <stage> --output <base>`. When
+benchmarking is enabled, also pass `--benchmark "<base>/.tlddr/benchmark"` to the
+deterministic stage commands (`extract`, `draft-eval`, `assemble`) so their duration rows
+land alongside the per-unit token rows the agentic skills record via `bench record`:
 
 - **extract:** `.venv/bin/tlddr extract --source <corpus> --output <base>`
 - **understand:** follow `skills/generate-sections/SKILL.md` if there is no `sections.json`,

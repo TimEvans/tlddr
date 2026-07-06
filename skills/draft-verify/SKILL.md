@@ -98,6 +98,18 @@ Run the groundedness readout to see the current overall picture:
 tlddr draft-eval --output "$TLDDR_OUTPUT"
 ```
 
+## Benchmark recording (when enabled)
+
+If the run has benchmarking enabled (`benchmark = true` in `tlddr.toml`), record one row per
+verify unit as its judge subagent returns — the numbers are the subagent's own metering:
+
+    tlddr bench record --output "$TLDDR_OUTPUT" --stage verify --kind section \
+        --unit <section_id> --model <model> --tokens <subagent_tokens> \
+        --tools <tool_uses> --ms <duration_ms>
+
+The benchmark dir derives from `--output`. Skip a unit whose token count is unavailable
+rather than guessing.
+
 ## Proving Gate
 
 Honor the run's **interaction style** (read it via `tlddr status` or `tlddr.toml`). This gate

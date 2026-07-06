@@ -65,6 +65,10 @@ def test_flag_beats_env(monkeypatch):
     assert resolve_base(Path("flagbase")) == Path("flagbase")
 
 
+def test_paths_benchmark_derives_from_base():
+    assert Paths(Path("/out/run1")).benchmark == Path("/out/run1/.tlddr/benchmark")
+
+
 def test_fresh_base_uses_hidden_tlddr(tmp_path):
     p = Paths(tmp_path)
     assert p.work == tmp_path / ".tlddr"

@@ -86,6 +86,10 @@ class Paths:
         return self.base / "tlddr.toml"
 
     @property
+    def benchmark(self) -> Path:
+        return self.work / "benchmark"
+
+    @property
     def extracted(self) -> Path:
         return self.work / "extracted"
 
@@ -464,7 +468,7 @@ def bench_report(benchmark_dir: Path) -> str:
 def status(base: Path) -> None:
     paths = Paths(base)
     state = runstate.load_state(paths.state_lock)
-    rows = bench.load_rows(paths.work / "benchmark") if (paths.work / "benchmark").exists() else []
+    rows = bench.load_rows(paths.benchmark) if paths.benchmark.exists() else []
     qpath = paths.questions
     questions = ([Question.model_validate(q) for q in json.loads(qpath.read_text())]
                  if qpath.exists() else [])
@@ -578,7 +582,8 @@ def main(argv: list[str] | None = None) -> int:
     bench_sub = bench_cmd.add_subparsers(dest="bench_command", required=True)
 
     brec = bench_sub.add_parser("record", help="append one benchmark row")
-    brec.add_argument("--benchmark", required=True, type=Path)
+    brec.add_argument("--output", type=Path, default=None,
+                      help="run base; the benchmark dir and source sizes derive from it")
     brec.add_argument("--stage", required=True)
     brec.add_argument("--unit", required=True)
     brec.add_argument("--kind", default="doc", choices=["doc", "section", "corpus", "stage"])
@@ -586,7 +591,6 @@ def main(argv: list[str] | None = None) -> int:
     brec.add_argument("--tokens", required=True, type=int)
     brec.add_argument("--tools", default=0, type=int)
     brec.add_argument("--ms", required=True, type=int)
-    brec.add_argument("--extracted", type=Path, default=None)
     brec.add_argument("--notes", default="")
 
     brep = bench_sub.add_parser("report", help="print benchmark tables")
@@ -658,7 +662,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "bench":
         if args.bench_command == "record":
-            bench_record(args.benchmark, args.extracted, args.stage, args.unit,
+            paths = Paths(resolve_base(args.output))
+            extracted = paths.extracted if paths.extracted.exists() else None
+            bench_record(paths.benchmark, extracted, args.stage, args.unit,
                          args.kind, args.model, args.tokens, args.tools, args.ms, args.notes)
         elif args.bench_command == "report":
             print(bench_report(args.benchmark))

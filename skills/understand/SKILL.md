@@ -142,6 +142,20 @@ Coverage observations to include:
 - Hubs that may need manual splitting.
 - Any gaps in section coverage (sections with no assigned documents).
 
+## Benchmark recording (when enabled)
+
+If the run has benchmarking enabled (`benchmark = true` in `tlddr.toml`), record one row per
+document as its comprehension subagent returns — the token/duration numbers are the
+subagent's own metering, reported back when it completes:
+
+    tlddr bench record --output "$TLDDR_OUTPUT" --stage understand --kind doc \
+        --unit <doc_id> --model <model> --tokens <subagent_tokens> \
+        --tools <tool_uses> --ms <duration_ms>
+
+The benchmark dir and per-doc source sizes derive from `--output`. Skip a unit whose token
+count is unavailable (e.g. inline host work) rather than guessing — an absent row shows no
+token, never a fabricated one.
+
 ## Proving Gate
 
 Honor the run's **interaction style** (read it via `tlddr status` or `tlddr.toml`). This gate
