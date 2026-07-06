@@ -1,4 +1,6 @@
-# tl;ddr
+<p align="center">
+  <img src="logo.png" width="320" alt="tl;ddr">
+</p>
 
 [![tests](https://github.com/TimEvans/tlddr/actions/workflows/tests.yml/badge.svg)](https://github.com/TimEvans/tlddr/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
