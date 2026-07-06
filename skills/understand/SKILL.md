@@ -144,14 +144,22 @@ Coverage observations to include:
 
 ## Proving Gate
 
-Stop. Ask the user to open `$TLDDR_OUTPUT/vault/` and `$TLDDR_OUTPUT/vault/_triage.md` and confirm:
+Honor the run's **interaction style** (read it via `tlddr status` or `tlddr.toml`). This gate
+is **blocking** if any node is RED in triage (a blocking open question, or LOW confidence).
 
-- The section index looks like a trustworthy map of the corpus.
-- Triage colours match their reading of the documents.
-- Open questions are actionable.
-- Coverage observations are useful.
+- **`guided`, or a blocking gate under any style:** stop and get the Reviewer's explicit
+  sign-off before proceeding. Ask them to open `$TLDDR_OUTPUT/vault/` and
+  `$TLDDR_OUTPUT/vault/_triage.md` and confirm:
+  - The section index looks like a trustworthy map of the corpus.
+  - Triage colours match their reading of the documents.
+  - Open questions are actionable.
+  - Coverage observations are useful.
 
-Do not proceed to any downstream stages until the user approves.
+  Do not proceed to any downstream stage until the Reviewer approves.
+
+- **`autonomous`, non-blocking:** do not stop. The triage summary and open questions are
+  already recorded in `_triage.md` and will surface in the end-of-run review queue; continue
+  to the next stage.
 
 ## Re-pass mode (answer loop)
 

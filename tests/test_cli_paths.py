@@ -1,4 +1,5 @@
 from pathlib import Path
+import pytest
 from tlddr.cli import resolve_base, Paths
 
 
@@ -26,9 +27,32 @@ def test_paths_derives_layout_from_base():
     assert p.report == Path("/out/run1/report")
 
 
-def test_default_base_is_cwd(monkeypatch):
+def test_discovers_run_root_by_walking_up(tmp_path, monkeypatch):
+    """With no flag/env, resolve the base by walking up to the nearest run marker,
+    so a bare invocation from inside a run finds it (git/npm-style)."""
+    (tmp_path / "tlddr.toml").write_text("")
+    sub = tmp_path / "a" / "b"
+    sub.mkdir(parents=True)
     monkeypatch.delenv("TLDDR_OUTPUT", raising=False)
-    assert resolve_base(None) == Path(".")
+    monkeypatch.chdir(sub)
+    assert resolve_base(None) == tmp_path.resolve()
+
+
+def test_no_run_found_fails_loud(tmp_path, monkeypatch):
+    """A read command with no flag/env and no run marker anywhere above must fail
+    loud, not silently default to cwd (the landmine that aliased a stale run)."""
+    monkeypatch.delenv("TLDDR_OUTPUT", raising=False)
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit):
+        resolve_base(None)
+
+
+def test_config_falls_back_to_cwd_when_no_run(tmp_path, monkeypatch):
+    """The run-creating command (config) may default to cwd when no run exists —
+    it is establishing one, not operating on an existing one."""
+    monkeypatch.delenv("TLDDR_OUTPUT", raising=False)
+    monkeypatch.chdir(tmp_path)
+    assert resolve_base(None, require_run=False) == Path.cwd()
 
 
 def test_env_still_overrides_default(monkeypatch):

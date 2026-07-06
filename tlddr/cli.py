@@ -30,12 +30,35 @@ from tlddr.answer import ingest_answers, parse_triage_answers
 from tlddr import bench
 
 
-def resolve_base(cli_output: Path | None) -> Path:
-    """Resolve the output base: --output flag > TLDDR_OUTPUT env > current directory."""
+def _find_run_root(start: Path) -> Path | None:
+    """Nearest ancestor (including start) that holds a run marker (tlddr.toml or
+    .tlddr/), or None if there is no run at or above start."""
+    start = start.resolve()
+    for d in (start, *start.parents):
+        if (d / "tlddr.toml").exists() or (d / ".tlddr").exists():
+            return d
+    return None
+
+
+def resolve_base(cli_output: Path | None, *, require_run: bool = True) -> Path:
+    """Resolve the output base: --output flag > TLDDR_OUTPUT env > the nearest run
+    marker walking up from the current directory (git/npm-style discovery). If no
+    run is found, fail loud when one is required, so a bare invocation never
+    silently defaults to a cwd that may hold an unrelated stale run. The
+    run-creating command (config) passes require_run=False to fall back to cwd."""
     if cli_output is not None:
         return cli_output
     env = os.environ.get("TLDDR_OUTPUT")
-    return Path(env) if env else Path(".")
+    if env:
+        return Path(env)
+    found = _find_run_root(Path.cwd())
+    if found is not None:
+        return found
+    if require_run:
+        raise SystemExit(
+            "no tl-ddr run found in this directory or any parent — cd into a run, "
+            "pass --output <dir>, or run `tlddr config` to start one.")
+    return Path.cwd()
 
 
 @dataclass(frozen=True)
@@ -630,7 +653,7 @@ def main(argv: list[str] | None = None) -> int:
         mark_stage_cmd(resolve_base(args.output), args.stage)
         return 0
     if args.command == "config":
-        config_cmd(resolve_base(args.output), args.preset, args.corpus, args.model,
+        config_cmd(resolve_base(args.output, require_run=False), args.preset, args.corpus, args.model,
                    args.effort, args.interaction, args.benchmark)
         return 0
     if args.command == "bench":
