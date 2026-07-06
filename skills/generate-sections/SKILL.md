@@ -12,12 +12,12 @@ Turns a user-provided markdown headings file into the canonical `sections.json` 
 ## Output location
 
 All paths below are relative to the run's output base, `$TLDDR_OUTPUT` (default
-`.tlddr` when unset). Set it once at the start of the run so every `tlddr`
+the current directory when unset). Set it once at the start of the run so every `tlddr`
 command and file reference resolves under the same directory:
 
     export TLDDR_OUTPUT=<your-output-dir>   # e.g. output/Chevron-10K
 
-Work artifacts live under `$TLDDR_OUTPUT/work/`, the rendered vault under
+Work artifacts live under `$TLDDR_OUTPUT/.tlddr/`, the rendered vault under
 `$TLDDR_OUTPUT/vault/`, and the report under `$TLDDR_OUTPUT/report/`.
 
 ## Procedure
@@ -49,7 +49,7 @@ Present the proposed structure as a readable list or table (id, title, parent). 
 
 ### 4. Materialize
 
-Write the curated list to `$TLDDR_OUTPUT/work/sections.json` as a JSON array in document order. Top-level entries use `{id, title}`; nested entries add `parent`; entries with body content add `guidance`.
+Write the curated list to `$TLDDR_OUTPUT/.tlddr/sections.json` as a JSON array in document order. Top-level entries use `{id, title}`; nested entries add `parent`; entries with body content add `guidance`.
 
 ```json
 [
@@ -76,7 +76,7 @@ Omit `guidance` entirely when it is null rather than writing `"guidance": null` 
 Run:
 
 ```
-tlddr sections --sections "$TLDDR_OUTPUT/work/sections.json"
+tlddr sections --sections "$TLDDR_OUTPUT/.tlddr/sections.json"
 ```
 
 The command prints each section (`id — title`, children indented) and exits 0. Duplicate ids and unknown parent references fail loudly — fix the JSON and re-run until the output is clean.

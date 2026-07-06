@@ -20,27 +20,27 @@ The CLI owns persistence and quality gates:
 ## Output location
 
 All paths below are relative to the run's output base, `$TLDDR_OUTPUT` (default
-`.tlddr` when unset). Set it once at the start of the run so every `tlddr`
+the current directory when unset). Set it once at the start of the run so every `tlddr`
 command and file reference resolves under the same directory:
 
     export TLDDR_OUTPUT=<your-output-dir>   # e.g. output/Chevron-10K
 
-Work artifacts live under `$TLDDR_OUTPUT/work/`, the rendered vault under
+Work artifacts live under `$TLDDR_OUTPUT/.tlddr/`, the rendered vault under
 `$TLDDR_OUTPUT/vault/`, and the report under `$TLDDR_OUTPUT/report/`.
 
 ## Prerequisites
 
 Before starting any section:
 
-1. **Committed vault** — `$TLDDR_OUTPUT/work/nodes/*.json` must exist. If missing, run the `understand` skill first.
-2. **Curated sections** — `$TLDDR_OUTPUT/work/sections.json` must exist. If missing, run the `generate-sections` skill.
-3. **Extracted store** — `$TLDDR_OUTPUT/work/extracted/*.json` must exist (the canonical content store).
+1. **Committed vault** — `$TLDDR_OUTPUT/.tlddr/nodes/*.json` must exist. If missing, run the `understand` skill first.
+2. **Curated sections** — `$TLDDR_OUTPUT/.tlddr/sections.json` must exist. If missing, run the `generate-sections` skill.
+3. **Extracted store** — `$TLDDR_OUTPUT/.tlddr/extracted/*.json` must exist (the canonical content store).
 
 ## Phase 1 — Identify evidence per section
 
 For each section in `sections.json`:
 
-1. Find all node files whose `report_sections` array contains this section's id. Scan `$TLDDR_OUTPUT/work/nodes/*.json` and collect every node where `report_sections` includes the section id.
+1. Find all node files whose `report_sections` array contains this section's id. Scan `$TLDDR_OUTPUT/.tlddr/nodes/*.json` and collect every node where `report_sections` includes the section id.
 
 2. If no nodes are tagged for a section, the CLI will emit a no-evidence finding for any claim submitted for that section. Skip drafting for sections with zero tagged nodes — they will be called out in the groundedness readout.
 
@@ -82,7 +82,7 @@ Draft each section against its `guidance` field from `sections.json` (if non-nul
 
 ### 4a. Write claims JSON
 
-Write the claims array for this section to a temporary file (e.g. `$TLDDR_OUTPUT/work/draft-<section_id>.json`):
+Write the claims array for this section to a temporary file (e.g. `$TLDDR_OUTPUT/.tlddr/draft-<section_id>.json`):
 
 ```json
 [
@@ -114,7 +114,7 @@ Each file must be a JSON array, even if it contains a single claim. All claims i
 
 ```
 tlddr draft-commit \
-  --claims "$TLDDR_OUTPUT/work/draft-<section_id>.json" \
+  --claims "$TLDDR_OUTPUT/.tlddr/draft-<section_id>.json" \
   --output "$TLDDR_OUTPUT"
 ```
 
@@ -163,14 +163,14 @@ guidance names.
 
 ### 1. Identify the target claims
 
-Read `$TLDDR_OUTPUT/work/claims.json` and find the `id` of each claim the guidance
+Read `$TLDDR_OUTPUT/.tlddr/claims.json` and find the `id` of each claim the guidance
 targets — the question's `claim_id`, or the claim(s) the worklist entry's guidance
 describes.
 
 ### 2. Author the amendments file
 
 Write one record per amended claim to a temporary file (e.g.
-`$TLDDR_OUTPUT/work/amendments.json`). Each record targets a claim by its `id` and
+`$TLDDR_OUTPUT/.tlddr/amendments.json`). Each record targets a claim by its `id` and
 carries only the edits it needs — `set_text`, `add_pages`, `set_support`, and
 `set_evidence` are all optional:
 
@@ -195,7 +195,7 @@ a citation. Any `add_pages` entry must point to a page you have actually read.
 
 ```
 .venv/bin/tlddr draft-amend \
-  --amendments "$TLDDR_OUTPUT/work/amendments.json" \
+  --amendments "$TLDDR_OUTPUT/.tlddr/amendments.json" \
   --output "$TLDDR_OUTPUT"
 ```
 
