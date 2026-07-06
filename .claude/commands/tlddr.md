@@ -38,6 +38,10 @@ Present the options plainly (a short numbered list) and wait for the choice.
 - **Configure:** walk the flat list — corpus, output, preset (`quick` (recommended)
   / `careful`), and any overrides the user wants (`--model`, `--effort`,
   `--interaction`, `--benchmark`). Then run `tlddr config` with those flags.
+  Each `tlddr config` call records exactly the flags it is given (it does not merge
+  with a previous call's flags). For a pin that should persist across runs and
+  preset changes, set it directly in `tlddr.toml`'s `[overrides]` table — that file
+  is the sticky config layer, and its values win over the preset.
 
 `tlddr config` writes `tlddr.toml`, initializes the run state (or updates it in
 place, preserving stage progress, when reconfiguring the same corpus), and prints
