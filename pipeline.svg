@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 400" width="680" role="img" aria-labelledby="t d" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 420" width="880" role="img" aria-labelledby="t d" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
   <title id="t">tlddr pipeline</title>
-  <desc id="d">A four-stage square loop. Input enters at Extract. Extract to Understand across the top, down to Draft, across to Assemble, and Assemble returns up through a Review step on the left back to Extract. A Quarantine box in the centre receives flagged items from both Understand and Draft, and passes them to Review. Output leaves at Assemble.</desc>
+  <desc id="d">The /tlddr orchestrator drives five stages left to right: Extract, Understand, Draft, Verify, Assemble, each run by a /tlddr verb. Input enters the bottom of Extract; output leaves the bottom of Assemble. Beneath the row, a Quarantine channel receives flagged questions from Understand, Draft and Verify, and feeds a single Review queue. Reviewer answers re-run Understand and Draft.</desc>
 
   <defs>
     <marker id="ah" viewBox="0 0 10 10" refX="7.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -8,52 +8,95 @@
     </marker>
   </defs>
 
+  <!-- /tlddr launcher banner -->
   <g>
-    <rect x="150" y="50" width="160" height="60" rx="10" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1.5"/>
-    <text x="230" y="76" text-anchor="middle" font-size="15" font-weight="600" fill="#04342C">1 · Extract</text>
-    <text x="230" y="94" text-anchor="middle" font-size="11.5" fill="#0F6E56">route by signal type</text>
+    <rect x="110" y="34" width="700" height="30" rx="15" fill="#0F6E56" stroke="#0A4A3A" stroke-width="1"/>
+    <text x="132" y="54" text-anchor="start" font-size="14" font-weight="700" fill="#EAF7F1" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/tlddr</text>
+    <text x="204" y="54" text-anchor="start" font-size="11" fill="#A9DCC9">one command runs or resumes the whole pipeline</text>
+  </g>
+  <line x1="176" y1="64" x2="176" y2="86" stroke="#0F6E56" stroke-width="1.4" opacity="0.5"/>
+  <line x1="318" y1="64" x2="318" y2="86" stroke="#0F6E56" stroke-width="1.4" opacity="0.5"/>
+  <line x1="460" y1="64" x2="460" y2="86" stroke="#0F6E56" stroke-width="1.4" opacity="0.5"/>
+  <line x1="602" y1="64" x2="602" y2="86" stroke="#0F6E56" stroke-width="1.4" opacity="0.5"/>
+  <line x1="744" y1="64" x2="744" y2="86" stroke="#0F6E56" stroke-width="1.4" opacity="0.5"/>
+
+  <!-- stage blocks -->
+  <g>
+    <rect x="110" y="86" width="132" height="84" rx="10" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1.5"/>
+    <text x="176" y="110" text-anchor="middle" font-size="14" font-weight="600" fill="#04342C">1 · Extract</text>
+    <text x="176" y="128" text-anchor="middle" font-size="10.5" fill="#0F6E56">route by signal type</text>
+    <rect x="124" y="140" width="104" height="20" rx="5" fill="#D3EFE6"/>
+    <text x="176" y="154" text-anchor="middle" font-size="10.5" fill="#0A5D48" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/tlddr extract</text>
   </g>
   <g>
-    <rect x="440" y="50" width="160" height="60" rx="10" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1.5"/>
-    <text x="520" y="76" text-anchor="middle" font-size="15" font-weight="600" fill="#04342C">2 · Understand</text>
-    <text x="520" y="94" text-anchor="middle" font-size="11.5" fill="#0F6E56">describe · tag · link</text>
+    <rect x="252" y="86" width="132" height="84" rx="10" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1.5"/>
+    <text x="318" y="110" text-anchor="middle" font-size="14" font-weight="600" fill="#04342C">2 · Understand</text>
+    <text x="318" y="128" text-anchor="middle" font-size="10.5" fill="#0F6E56">describe · tag · link</text>
+    <rect x="260" y="140" width="116" height="20" rx="5" fill="#D3EFE6"/>
+    <text x="318" y="154" text-anchor="middle" font-size="10.5" fill="#0A5D48" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/tlddr understand</text>
   </g>
   <g>
-    <rect x="440" y="290" width="160" height="60" rx="10" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1.5"/>
-    <text x="520" y="316" text-anchor="middle" font-size="15" font-weight="600" fill="#04342C">3 · Draft</text>
-    <text x="520" y="334" text-anchor="middle" font-size="11.5" fill="#0F6E56">grounded, page-cited</text>
+    <rect x="394" y="86" width="132" height="84" rx="10" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1.5"/>
+    <text x="460" y="110" text-anchor="middle" font-size="14" font-weight="600" fill="#04342C">3 · Draft</text>
+    <text x="460" y="128" text-anchor="middle" font-size="10.5" fill="#0F6E56">grounded, page-cited</text>
+    <rect x="410" y="140" width="100" height="20" rx="5" fill="#D3EFE6"/>
+    <text x="460" y="154" text-anchor="middle" font-size="10.5" fill="#0A5D48" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/tlddr draft</text>
   </g>
   <g>
-    <rect x="150" y="290" width="160" height="60" rx="10" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1.5"/>
-    <text x="230" y="316" text-anchor="middle" font-size="15" font-weight="600" fill="#04342C">4 · Assemble</text>
-    <text x="230" y="334" text-anchor="middle" font-size="11.5" fill="#0F6E56">judge · roll-up</text>
+    <rect x="536" y="86" width="132" height="84" rx="10" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1.5"/>
+    <text x="602" y="110" text-anchor="middle" font-size="14" font-weight="600" fill="#04342C">4 · Verify</text>
+    <text x="602" y="128" text-anchor="middle" font-size="10.5" fill="#0F6E56">independent judge</text>
+    <rect x="548" y="140" width="108" height="20" rx="5" fill="#D3EFE6"/>
+    <text x="602" y="154" text-anchor="middle" font-size="10.5" fill="#0A5D48" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/tlddr verify</text>
+  </g>
+  <g>
+    <rect x="678" y="86" width="132" height="84" rx="10" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1.5"/>
+    <text x="744" y="110" text-anchor="middle" font-size="14" font-weight="600" fill="#04342C">5 · Assemble</text>
+    <text x="744" y="128" text-anchor="middle" font-size="10.5" fill="#0F6E56">roll-up</text>
+    <rect x="692" y="140" width="104" height="20" rx="5" fill="#D3EFE6"/>
+    <text x="744" y="154" text-anchor="middle" font-size="10.5" fill="#0A5D48" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/tlddr assemble</text>
   </g>
 
-  <line x1="310" y1="80" x2="434" y2="80" stroke="#0F6E56" stroke-width="2" marker-end="url(#ah)"/>
-  <line x1="520" y1="110" x2="520" y2="284" stroke="#0F6E56" stroke-width="2" marker-end="url(#ah)"/>
-  <line x1="440" y1="320" x2="316" y2="320" stroke="#0F6E56" stroke-width="2" marker-end="url(#ah)"/>
+  <!-- flow arrows between stages -->
+  <line x1="242" y1="128" x2="252" y2="128" stroke="#0F6E56" stroke-width="2" marker-end="url(#ah)"/>
+  <line x1="384" y1="128" x2="394" y2="128" stroke="#0F6E56" stroke-width="2" marker-end="url(#ah)"/>
+  <line x1="526" y1="128" x2="536" y2="128" stroke="#0F6E56" stroke-width="2" marker-end="url(#ah)"/>
+  <line x1="668" y1="128" x2="678" y2="128" stroke="#0F6E56" stroke-width="2" marker-end="url(#ah)"/>
 
-  <path d="M230 290 L230 224" fill="none" stroke="#BA7517" stroke-width="2" stroke-dasharray="6 4"/>
-  <path d="M230 176 L230 116" fill="none" stroke="#BA7517" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#ah)"/>
+  <!-- INPUT into bottom of stage 1 -->
+  <path d="M176 214 L176 174" fill="none" stroke="#5F5E5A" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="176" y="232" text-anchor="middle" font-size="12" font-weight="600" fill="#5F5E5A">INPUT</text>
+  <text x="176" y="248" text-anchor="middle" font-size="10" fill="#888780">docs · pdf · xlsx</text>
+
+  <!-- OUTPUT out of bottom of stage 5 -->
+  <path d="M744 174 L744 214" fill="none" stroke="#185FA5" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="744" y="232" text-anchor="middle" font-size="12" font-weight="600" fill="#185FA5">OUTPUT</text>
+  <text x="744" y="248" text-anchor="middle" font-size="10" fill="#378ADD">report + sidecar</text>
+
+  <!-- Review under Understand -->
   <g>
-    <rect x="172" y="182" width="116" height="36" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="1.5"/>
-    <text x="230" y="205" text-anchor="middle" font-size="13" font-weight="600" fill="#412402">Review</text>
+    <rect x="252" y="306" width="132" height="62" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="1.5"/>
+    <text x="318" y="329" text-anchor="middle" font-size="13" font-weight="600" fill="#412402">Review</text>
+    <rect x="266" y="339" width="104" height="20" rx="5" fill="#F3E4C6"/>
+    <text x="318" y="353" text-anchor="middle" font-size="10.5" fill="#6B4406" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/tlddr review</text>
   </g>
 
+  <!-- Quarantine aligned under Verify, matching Verify width and Review height -->
   <g>
-    <rect x="315" y="180" width="130" height="40" rx="8" fill="#FCEBEB" stroke="#A32D2D" stroke-width="1.5"/>
-    <text x="380" y="199" text-anchor="middle" font-size="13" font-weight="600" fill="#501313">Quarantine</text>
-    <text x="380" y="213" text-anchor="middle" font-size="10" fill="#A32D2D">honest gaps</text>
+    <rect x="536" y="306" width="132" height="62" rx="8" fill="#FCEBEB" stroke="#A32D2D" stroke-width="1.5"/>
+    <text x="602" y="332" text-anchor="middle" font-size="13" font-weight="600" fill="#501313">Quarantine</text>
+    <text x="602" y="349" text-anchor="middle" font-size="10" fill="#A32D2D">honest gaps</text>
   </g>
-  <path d="M486 110 L420 178" fill="none" stroke="#A32D2D" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#ah)"/>
-  <path d="M486 290 L420 222" fill="none" stroke="#A32D2D" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#ah)"/>
-  <line x1="315" y1="200" x2="292" y2="200" stroke="#A32D2D" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#ah)"/>
 
-  <path d="M62 80 L144 80" fill="none" stroke="#5F5E5A" stroke-width="2" marker-end="url(#ah)"/>
-  <text x="62" y="70" text-anchor="start" font-size="12" font-weight="600" fill="#5F5E5A">INPUT</text>
-  <text x="62" y="98" text-anchor="start" font-size="10.5" fill="#888780">docs · pdf · xlsx</text>
+  <!-- three dashed intakes into Quarantine: Understand, Draft, Verify -->
+  <path d="M340 170 L560 303" fill="none" stroke="#A32D2D" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#ah)"/>
+  <path d="M460 170 L590 303" fill="none" stroke="#A32D2D" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#ah)"/>
+  <path d="M602 170 L602 300" fill="none" stroke="#A32D2D" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#ah)"/>
 
-  <path d="M230 350 L230 384" fill="none" stroke="#185FA5" stroke-width="2" marker-end="url(#ah)"/>
-  <text x="250" y="370" text-anchor="start" font-size="12" font-weight="600" fill="#185FA5">OUTPUT</text>
-  <text x="250" y="386" text-anchor="start" font-size="10.5" fill="#378ADD">attributed report + sidecar</text>
+  <!-- single Quarantine -> Review -->
+  <line x1="536" y1="337" x2="388" y2="337" stroke="#A32D2D" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#ah)"/>
+
+  <!-- re-pass loop-back: Review -> Understand, Review -> Draft -->
+  <path d="M318 306 L318 172" fill="none" stroke="#BA7517" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#ah)"/>
+  <path d="M352 306 L352 270 L460 270 L460 172" fill="none" stroke="#BA7517" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#ah)"/>
 </svg>
