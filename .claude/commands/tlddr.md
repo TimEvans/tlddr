@@ -39,8 +39,9 @@ Present the options plainly (a short numbered list) and wait for the choice.
   / `careful`), and any overrides the user wants (`--model`, `--effort`,
   `--interaction`, `--benchmark`). Then run `tlddr config` with those flags.
 
-`tlddr config` writes `tlddr.toml`, initializes the run state, and prints the
-resolved config. Read it back to the user in one line and confirm before running.
+`tlddr config` writes `tlddr.toml`, initializes the run state (or updates it in
+place, preserving stage progress, when reconfiguring the same corpus), and prints
+the resolved config. Read it back to the user in one line and confirm before running.
 
 ## 4. Run the pipeline (per resolved interaction style)
 
