@@ -18,26 +18,26 @@ An independent judge pass that re-reads the source evidence and assesses each co
 ## Output location
 
 All paths below are relative to the run's output base, `$TLDDR_OUTPUT` (default
-`.tlddr` when unset). Set it once at the start of the run so every `tlddr`
+the current directory when unset). Set it once at the start of the run so every `tlddr`
 command and file reference resolves under the same directory:
 
     export TLDDR_OUTPUT=<your-output-dir>   # e.g. output/Chevron-10K
 
-Work artifacts live under `$TLDDR_OUTPUT/work/`, the rendered vault under
+Work artifacts live under `$TLDDR_OUTPUT/.tlddr/`, the rendered vault under
 `$TLDDR_OUTPUT/vault/`, and the report under `$TLDDR_OUTPUT/report/`.
 
 ## Prerequisites
 
 Before starting:
 
-1. **Committed claims store** — `$TLDDR_OUTPUT/work/claims.json` must exist and be non-empty. If missing, run the `draft` skill first.
-2. **Extracted store** — `$TLDDR_OUTPUT/work/extracted/*.json` must exist.
+1. **Committed claims store** — `$TLDDR_OUTPUT/.tlddr/claims.json` must exist and be non-empty. If missing, run the `draft` skill first.
+2. **Extracted store** — `$TLDDR_OUTPUT/.tlddr/extracted/*.json` must exist.
 
 ## Procedure
 
 ### 1. Load the committed claims
 
-Read `$TLDDR_OUTPUT/work/claims.json`. The array is the authoritative list of committed claims. Note each claim's `id` — your verdict array must reference every claim by its `id`; order does not matter.
+Read `$TLDDR_OUTPUT/.tlddr/claims.json`. The array is the authoritative list of committed claims. Note each claim's `id` — your verdict array must reference every claim by its `id`; order does not matter.
 
 Each claim record contains: `id`, `section_id`, `text`, `support_level` (the drafter's assessment), `evidence_relation`, and `sources` (a list of `{node_id, page}` pairs).
 
@@ -66,7 +66,7 @@ Do not reference any information beyond the pages you have read for that specifi
 
 ### 3. Emit verdicts JSON
 
-Write the complete verdicts array to a temporary file (e.g. `$TLDDR_OUTPUT/work/verdicts.json`). The array must contain one entry per claim, each keyed on that claim's `id`:
+Write the complete verdicts array to a temporary file (e.g. `$TLDDR_OUTPUT/.tlddr/verdicts.json`). The array must contain one entry per claim, each keyed on that claim's `id`:
 
 ```json
 [
@@ -82,7 +82,7 @@ Every claim's `id` from `claims.json` must appear. An omitted id leaves that cla
 
 ```
 tlddr draft-verify-commit \
-  --verdicts "$TLDDR_OUTPUT/work/verdicts.json" \
+  --verdicts "$TLDDR_OUTPUT/.tlddr/verdicts.json" \
   --output "$TLDDR_OUTPUT"
 ```
 

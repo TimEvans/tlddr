@@ -27,21 +27,21 @@ the Reviewer — this session runs whenever they are ready, and is resumable.
 
 ## Output location
 
-All paths are relative to the run's output base, `$TLDDR_OUTPUT` (default `.tlddr`).
+All paths are relative to the run's output base, `$TLDDR_OUTPUT` (default the current directory).
 
     export TLDDR_OUTPUT=<your-output-dir>
 
 ## Prerequisites
 
-- `$TLDDR_OUTPUT/work/questions.json` exists with open (unresolved) questions.
-- `$TLDDR_OUTPUT/work/sections.json`, `nodes/`, and `extracted/` exist (a completed
+- `$TLDDR_OUTPUT/.tlddr/questions.json` exists with open (unresolved) questions.
+- `$TLDDR_OUTPUT/.tlddr/sections.json`, `nodes/`, and `extracted/` exist (a completed
   draft/verify run).
 
 ## Procedure
 
 ### 1. Load the open queue
 
-Read `$TLDDR_OUTPUT/work/questions.json`. Work only the questions whose `status` is
+Read `$TLDDR_OUTPUT/.tlddr/questions.json`. Work only the questions whose `status` is
 `open`. Order them blocking-first, then by section. Tell the Reviewer how many
 open questions there are.
 
@@ -52,7 +52,7 @@ Do not batch. For each open question:
 1. **State the question** clearly and plainly.
 2. **Link the pertinent documents** for retrieval: the `[[node_id]]` of the source(s)
    and, for a `verify` question, the cited pages of the claim under review (look them
-   up in `work/claims.json`). The Reviewer may need to open these before deciding.
+   up in `.tlddr/claims.json`). The Reviewer may need to open these before deciding.
 3. **Offer a probable answer.** Say what you think the answer most likely is and why,
    grounded in the cited pages. Where the question genuinely admits more than one
    reading, present the **ranked interpretations** as options (best first), the way
@@ -90,7 +90,7 @@ Read the printed RE-PASS WORKLIST.
 For each **section** entry (re-pass): treat the entry's `guidance` as Reviewer
 instruction for the specific claims the question named — **do not regenerate the whole
 section**; a full re-draft churns claims the Reviewer never questioned and reopens
-findings already accepted. Look up those claims' `id`s in `$TLDDR_OUTPUT/work/claims.json`,
+findings already accepted. Look up those claims' `id`s in `$TLDDR_OUTPUT/.tlddr/claims.json`,
 author an `amendments.json` record per claim (`{claim_id, set_text?, add_pages?,
 set_support?, set_evidence?}`), and apply it:
 

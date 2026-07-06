@@ -5,7 +5,11 @@ import re
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
+from tlddr import runstate
+from tlddr import config as tlddr_config
+from tlddr.status import render_status
 from tlddr.extract.base import ExtractContext
 from tlddr.extract.router import route
 from tlddr.extract.report import render_report
@@ -27,10 +31,11 @@ from tlddr import bench
 
 
 def resolve_base(cli_output: Path | None) -> Path:
-    """Resolve the output base dir: --output flag > TLDDR_OUTPUT env > ./.tlddr."""
+    """Resolve the output base: --output flag > TLDDR_OUTPUT env > current directory."""
     if cli_output is not None:
         return cli_output
-    return Path(os.environ.get("TLDDR_OUTPUT") or ".tlddr")
+    env = os.environ.get("TLDDR_OUTPUT")
+    return Path(env) if env else Path(".")
 
 
 @dataclass(frozen=True)
@@ -41,7 +46,21 @@ class Paths:
 
     @property
     def work(self) -> Path:
-        return self.base / "work"
+        """The hidden machine bin. Falls back to a legacy work/ dir if one exists
+        and .tlddr/ does not, so pre-existing runs keep working until re-run."""
+        hidden = self.base / ".tlddr"
+        legacy = self.base / "work"
+        if legacy.exists() and not hidden.exists():
+            return legacy
+        return hidden
+
+    @property
+    def state_lock(self) -> Path:
+        return self.work / "state_lock.json"
+
+    @property
+    def config(self) -> Path:
+        return self.base / "tlddr.toml"
 
     @property
     def extracted(self) -> Path:
@@ -419,6 +438,48 @@ def bench_report(benchmark_dir: Path) -> str:
     return bench.render_report(bench.load_rows(benchmark_dir))
 
 
+def status(base: Path) -> None:
+    paths = Paths(base)
+    state = runstate.load_state(paths.state_lock)
+    rows = bench.load_rows(paths.work / "benchmark") if (paths.work / "benchmark").exists() else []
+    qpath = paths.questions
+    questions = ([Question.model_validate(q) for q in json.loads(qpath.read_text())]
+                 if qpath.exists() else [])
+    print(render_status(state, rows, questions))
+
+
+def mark_stage_cmd(base: Path, stage: str) -> None:
+    paths = Paths(base)
+    now = datetime.now(timezone.utc).isoformat()
+    runstate.mark_stage(paths.state_lock, stage, now=now)
+    print(f"marked {stage} done")
+
+
+def config_cmd(base: Path, preset: str | None, corpus: str | None, model: str | None,
+               effort: str | None, interaction: str | None, benchmark: bool | None) -> None:
+    paths = Paths(base)
+    toml_cfg = tlddr_config.read_toml(paths.config)
+    overrides = {"corpus": corpus, "output": str(base), "model": model,
+                 "effort": effort, "interaction": interaction, "benchmark": benchmark}
+    cfg = tlddr_config.resolve_config(preset, overrides, toml_cfg)
+    # persist human config: top-level corpus/output/preset, plus an [overrides]
+    # table holding ONLY the axes the user explicitly pinned this invocation
+    # (not the full resolved cfg) -- otherwise every axis gets pinned via the
+    # preset's own values and a later --preset switch would be inert.
+    explicit_overrides = {a: overrides[a] for a in
+                           ("model", "effort", "interaction", "benchmark")
+                           if overrides.get(a) is not None}
+    persist = {"corpus": cfg.get("corpus"), "output": cfg.get("output"),
+               "preset": cfg.get("preset"), "overrides": explicit_overrides}
+    tlddr_config.write_toml(paths.config, {k: v for k, v in persist.items() if v is not None})
+    fp = runstate.corpus_fingerprint(Path(cfg["corpus"])) if cfg.get("corpus") else ""
+    runstate.update_config(paths.state_lock, cfg, fp)
+    print("resolved config:")
+    for k in ("corpus", "output", "preset", "model", "effort", "interaction", "benchmark"):
+        if k in cfg:
+            print(f"  {k}: {cfg[k]}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="tlddr")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -473,6 +534,22 @@ def main(argv: list[str] | None = None) -> int:
     asm = sub.add_parser("assemble", help="assemble report.md + report_comments.md")
     asm.add_argument("--output", type=Path, default=None)
     asm.add_argument("--benchmark", type=Path, default=None)
+
+    st = sub.add_parser("status", help="print deterministic run state + progress")
+    st.add_argument("--output", type=Path, default=None)
+
+    ms = sub.add_parser("mark-stage", help="record a stage as done in the run state")
+    ms.add_argument("stage", choices=runstate.STAGES)
+    ms.add_argument("--output", type=Path, default=None)
+
+    cfg_cmd = sub.add_parser("config", help="resolve + persist run configuration (presets + overrides)")
+    cfg_cmd.add_argument("--preset", choices=list(tlddr_config.PRESETS), default=None)
+    cfg_cmd.add_argument("--corpus", default=None)
+    cfg_cmd.add_argument("--model", choices=["sonnet", "opus"], default=None)
+    cfg_cmd.add_argument("--effort", choices=["low", "medium", "high"], default=None)
+    cfg_cmd.add_argument("--interaction", choices=["autonomous", "guided"], default=None)
+    cfg_cmd.add_argument("--benchmark", dest="benchmark", action="store_true", default=None)
+    cfg_cmd.add_argument("--output", type=Path, default=None)
 
     bench_cmd = sub.add_parser("bench", help="record and report run benchmarks")
     bench_sub = bench_cmd.add_subparsers(dest="bench_command", required=True)
@@ -545,6 +622,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "assemble":
         paths = Paths(resolve_base(args.output))
         assemble(paths.work, paths.report, paths.sections, paths.vault, args.benchmark)
+        return 0
+    if args.command == "status":
+        status(resolve_base(args.output))
+        return 0
+    if args.command == "mark-stage":
+        mark_stage_cmd(resolve_base(args.output), args.stage)
+        return 0
+    if args.command == "config":
+        config_cmd(resolve_base(args.output), args.preset, args.corpus, args.model,
+                   args.effort, args.interaction, args.benchmark)
         return 0
     if args.command == "bench":
         if args.bench_command == "record":

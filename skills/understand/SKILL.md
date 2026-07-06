@@ -20,34 +20,34 @@ The CLI is the only thing that writes authoritative output:
 ## Output location
 
 All paths below are relative to the run's output base, `$TLDDR_OUTPUT` (default
-`.tlddr` when unset). Set it once at the start of the run so every `tlddr`
+the current directory when unset). Set it once at the start of the run so every `tlddr`
 command and file reference resolves under the same directory:
 
     export TLDDR_OUTPUT=<your-output-dir>   # e.g. output/Chevron-10K
 
-Work artifacts live under `$TLDDR_OUTPUT/work/`, the rendered vault under
+Work artifacts live under `$TLDDR_OUTPUT/.tlddr/`, the rendered vault under
 `$TLDDR_OUTPUT/vault/`, and the report under `$TLDDR_OUTPUT/report/`.
 
 ## Prerequisites
 
 Before starting any phase:
 
-1. **Extracted store** — `$TLDDR_OUTPUT/work/extracted/*.json` must exist. If missing, run:
+1. **Extracted store** — `$TLDDR_OUTPUT/.tlddr/extracted/*.json` must exist. If missing, run:
    ```
    tlddr extract --source <source-dir> --output "$TLDDR_OUTPUT"
    ```
 
-2. **Curated sections** — `$TLDDR_OUTPUT/work/sections.json` must exist. If missing, run the `generate-sections` skill to build it.
+2. **Curated sections** — `$TLDDR_OUTPUT/.tlddr/sections.json` must exist. If missing, run the `generate-sections` skill to build it.
 
 3. **Load and verify the section structure** — run once to confirm ids and hierarchy are clean:
    ```
-   tlddr sections --sections "$TLDDR_OUTPUT/work/sections.json"
+   tlddr sections --sections "$TLDDR_OUTPUT/.tlddr/sections.json"
    ```
    The command prints each section and exits 0. Fix any reported errors before proceeding.
 
 ## Phase 1 — Comprehend (per document)
 
-For each document id in `$TLDDR_OUTPUT/work/extracted/`:
+For each document id in `$TLDDR_OUTPUT/.tlddr/extracted/`:
 
 ### 1. Read the slice
 
@@ -59,7 +59,7 @@ This prints a bounded slice of the extracted document (title, structure markers,
 
 ### 2. Write the enrichment file
 
-Write `$TLDDR_OUTPUT/work/enrichment/<id>.json` with exactly these fields:
+Write `$TLDDR_OUTPUT/.tlddr/enrichment/<id>.json` with exactly these fields:
 
 ```json
 {
@@ -85,7 +85,7 @@ Do not propose edges in this phase. Process all documents before moving to Phase
 
 ## Phase 2 — Relate (holistic, once)
 
-Read every `$TLDDR_OUTPUT/work/enrichment/*.json` to build a complete picture of the corpus — all ids, all descriptions.
+Read every `$TLDDR_OUTPUT/.tlddr/enrichment/*.json` to build a complete picture of the corpus — all ids, all descriptions.
 
 Propose typed edges across the whole corpus. For each enrichment file, add or update the `related` list:
 
@@ -107,11 +107,11 @@ Constraints:
 
 ### Commit each enrichment file
 
-For each `$TLDDR_OUTPUT/work/enrichment/<id>.json`:
+For each `$TLDDR_OUTPUT/.tlddr/enrichment/<id>.json`:
 
 ```
 tlddr understand-commit \
-  --enrichment "$TLDDR_OUTPUT/work/enrichment/<id>.json" \
+  --enrichment "$TLDDR_OUTPUT/.tlddr/enrichment/<id>.json" \
   --output "$TLDDR_OUTPUT"
 ```
 
