@@ -26,7 +26,7 @@ with page-level citations.
 ## How it works
 
 <p align="center">
-  <img src="pipeline.svg" width="640" alt="tlddr pipeline: Extract, Understand, Draft, Verify, Assemble, with a Quarantine channel and a Review loop">
+  <img src="pipeline.svg" width="100%" alt="tlddr pipeline: Extract, Understand, Draft, Verify, Assemble, with a Quarantine channel and a Review loop">
 </p>
 
 Five stages over a shared vault, with quarantine as a cross-cutting channel for anything
