@@ -5,7 +5,10 @@ import re
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
+from tlddr import runstate
+from tlddr.status import render_status
 from tlddr.extract.base import ExtractContext
 from tlddr.extract.router import route
 from tlddr.extract.report import render_report
@@ -434,6 +437,23 @@ def bench_report(benchmark_dir: Path) -> str:
     return bench.render_report(bench.load_rows(benchmark_dir))
 
 
+def status(base: Path) -> None:
+    paths = Paths(base)
+    state = runstate.load_state(paths.state_lock)
+    rows = bench.load_rows(paths.work / "benchmark") if (paths.work / "benchmark").exists() else []
+    qpath = paths.questions
+    questions = ([Question.model_validate(q) for q in json.loads(qpath.read_text())]
+                 if qpath.exists() else [])
+    print(render_status(state, rows, questions))
+
+
+def mark_stage_cmd(base: Path, stage: str) -> None:
+    paths = Paths(base)
+    now = datetime.now(timezone.utc).isoformat()
+    runstate.mark_stage(paths.state_lock, stage, now=now)
+    print(f"marked {stage} done")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="tlddr")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -488,6 +508,13 @@ def main(argv: list[str] | None = None) -> int:
     asm = sub.add_parser("assemble", help="assemble report.md + report_comments.md")
     asm.add_argument("--output", type=Path, default=None)
     asm.add_argument("--benchmark", type=Path, default=None)
+
+    st = sub.add_parser("status", help="print deterministic run state + progress")
+    st.add_argument("--output", type=Path, default=None)
+
+    ms = sub.add_parser("mark-stage", help="record a stage as done in the run state")
+    ms.add_argument("stage", choices=runstate.STAGES)
+    ms.add_argument("--output", type=Path, default=None)
 
     bench_cmd = sub.add_parser("bench", help="record and report run benchmarks")
     bench_sub = bench_cmd.add_subparsers(dest="bench_command", required=True)
@@ -560,6 +587,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "assemble":
         paths = Paths(resolve_base(args.output))
         assemble(paths.work, paths.report, paths.sections, paths.vault, args.benchmark)
+        return 0
+    if args.command == "status":
+        status(resolve_base(args.output))
+        return 0
+    if args.command == "mark-stage":
+        mark_stage_cmd(resolve_base(args.output), args.stage)
         return 0
     if args.command == "bench":
         if args.bench_command == "record":
