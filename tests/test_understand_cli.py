@@ -33,7 +33,7 @@ def test_slice_then_commit_then_render(tmp_path):
     }
     ep = tmp_path / "a6.enrichment.json"
     ep.write_text(json.dumps(enrichment))
-    work = tmp_path / "work"
+    work = tmp_path / ".tlddr"
     node = understand_commit(ep, extracted, work)
     assert node.id == "a6"
     assert [e.target for e in node.related] == ["a3"]          # ghost dropped
@@ -60,7 +60,7 @@ def test_commit_is_idempotent_on_questions(tmp_path):
     }
     ep = tmp_path / "a6.enrichment.json"
     ep.write_text(json.dumps(enrichment))
-    work = tmp_path / "work"
+    work = tmp_path / ".tlddr"
     understand_commit(ep, extracted, work)
     understand_commit(ep, extracted, work)  # re-commit the same node
     questions = json.loads((work / "questions.json").read_text())
@@ -78,7 +78,7 @@ def test_understand_recommit_flips_and_preserves_answered_questions(tmp_path):
     }
     ep = tmp_path / "a6.enrichment.json"
     ep.write_text(json.dumps(enrichment))
-    work = tmp_path / "work"
+    work = tmp_path / ".tlddr"
     work.mkdir()
     (work / "questions.json").write_text(json.dumps([
         {"id": "u-1", "raised_by": "understand", "node_id": "a6",
@@ -110,7 +110,7 @@ def test_commit_validates_section_tags_against_spec(tmp_path):
     }
     ep = tmp_path / "a6.enrichment.json"
     ep.write_text(json.dumps(enrichment))
-    work = tmp_path / "work"
+    work = tmp_path / ".tlddr"
 
     node = understand_commit(ep, extracted, work, sections)
     assert node.report_sections == ["financial-model"]   # ghost-section dropped
@@ -148,7 +148,7 @@ def test_render_writes_section_coverage(tmp_path):
     }
     ep = tmp_path / "a6.enrichment.json"
     ep.write_text(json.dumps(enrichment))
-    work = tmp_path / "work"
+    work = tmp_path / ".tlddr"
     understand_commit(ep, extracted, work, sections)
 
     vault = tmp_path / "vault"

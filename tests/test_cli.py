@@ -28,7 +28,7 @@ def test_main_extract_returns_zero(tmp_path, simple_docx):
     base = tmp_path / "out"
     code = main(["extract", "--source", str(source), "--output", str(base)])
     assert code == 0
-    assert (base / "work" / "extraction-report.md").exists()
+    assert (base / ".tlddr" / "extraction-report.md").exists()
 
 
 def test_run_extract_isolates_per_file_failure(tmp_path, simple_docx):

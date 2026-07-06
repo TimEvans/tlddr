@@ -6,7 +6,7 @@ from tlddr.models import ExtractedDoc, Node, PageProvenance, SignalType, Extract
 
 def _setup(tmp: Path) -> Path:
     base = tmp / "out"
-    work = base / "work"
+    work = base / ".tlddr"
     extracted = work / "extracted"
     nodes = work / "nodes"
     extracted.mkdir(parents=True); nodes.mkdir(parents=True)
@@ -35,7 +35,7 @@ def test_draft_commit_then_assemble_writes_report_and_sidecar(tmp_path):
     }]))
 
     assert main(["draft-commit", "--claims", str(claims), "--output", str(base)]) == 0
-    assert (base / "work" / "claims.json").exists()
+    assert (base / ".tlddr" / "claims.json").exists()
 
     assert main(["assemble", "--output", str(base)]) == 0
     report = (base / "report" / "report.md").read_text()
@@ -65,7 +65,7 @@ def _commit_claims(tmp_path, base):
 def test_draft_verify_commit_is_idempotent(tmp_path):
     base = _setup(tmp_path)
     _commit_claims(tmp_path, base)
-    claim_id = json.loads((base / "work" / "claims.json").read_text())[0]["id"]
+    claim_id = json.loads((base / ".tlddr" / "claims.json").read_text())[0]["id"]
 
     verdicts_file = tmp_path / "verdicts.json"
     verdicts_file.write_text(json.dumps([{
@@ -76,7 +76,7 @@ def test_draft_verify_commit_is_idempotent(tmp_path):
     main(["draft-verify-commit", "--verdicts", str(verdicts_file), "--output", str(base)])
     main(["draft-verify-commit", "--verdicts", str(verdicts_file), "--output", str(base)])
 
-    qs = json.loads((base / "work" / "questions.json").read_text())
+    qs = json.loads((base / ".tlddr" / "questions.json").read_text())
     verify_qs = [q for q in qs if q.get("raised_by") == "verify"]
     assert len(verify_qs) == 1
 
@@ -103,14 +103,14 @@ def test_draft_commit_is_idempotent_with_unknown_sections(tmp_path):
     main(["draft-commit", "--claims", str(claims_file), "--output", str(base)])
     main(["draft-commit", "--claims", str(claims_file), "--output", str(base)])
 
-    qs = json.loads((base / "work" / "questions.json").read_text())
+    qs = json.loads((base / ".tlddr" / "questions.json").read_text())
     draft_qs = [q for q in qs if q.get("raised_by") == "draft" and q.get("section_id") == "s_unknown"]
     assert len(draft_qs) == 1
 
 
 def test_draft_commit_assigns_ids_to_legacy_claims(tmp_path):
     base = _setup(tmp_path)
-    work = base / "work"
+    work = base / ".tlddr"
 
     legacy_claim = {
         "section_id": "s2", "text": "Legacy claim.",

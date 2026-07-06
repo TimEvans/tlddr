@@ -27,10 +27,11 @@ from tlddr import bench
 
 
 def resolve_base(cli_output: Path | None) -> Path:
-    """Resolve the output base dir: --output flag > TLDDR_OUTPUT env > ./.tlddr."""
+    """Resolve the output base: --output flag > TLDDR_OUTPUT env > current directory."""
     if cli_output is not None:
         return cli_output
-    return Path(os.environ.get("TLDDR_OUTPUT") or ".tlddr")
+    env = os.environ.get("TLDDR_OUTPUT")
+    return Path(env) if env else Path(".")
 
 
 @dataclass(frozen=True)
@@ -41,7 +42,21 @@ class Paths:
 
     @property
     def work(self) -> Path:
-        return self.base / "work"
+        """The hidden machine bin. Falls back to a legacy work/ dir if one exists
+        and .tlddr/ does not, so pre-existing runs keep working until re-run."""
+        hidden = self.base / ".tlddr"
+        legacy = self.base / "work"
+        if legacy.exists() and not hidden.exists():
+            return legacy
+        return hidden
+
+    @property
+    def state_lock(self) -> Path:
+        return self.work / "state_lock.json"
+
+    @property
+    def config(self) -> Path:
+        return self.base / "tlddr.toml"
 
     @property
     def extracted(self) -> Path:

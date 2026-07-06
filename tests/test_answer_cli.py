@@ -6,7 +6,7 @@ from tlddr.models import Question
 
 def _work_with_questions(tmp: Path, questions: list[dict]) -> Path:
     base = tmp / "out"
-    work = base / "work"
+    work = base / ".tlddr"
     nodes = work / "nodes"
     nodes.mkdir(parents=True)
     (work / "questions.json").write_text(json.dumps(questions))
@@ -15,7 +15,7 @@ def _work_with_questions(tmp: Path, questions: list[dict]) -> Path:
 
 
 def _load_qs(base: Path) -> list[dict]:
-    return json.loads((base / "work" / "questions.json").read_text())
+    return json.loads((base / ".tlddr" / "questions.json").read_text())
 
 
 def test_answer_commit_resolves_and_writes_worklist(tmp_path):
@@ -36,7 +36,7 @@ def test_answer_commit_resolves_and_writes_worklist(tmp_path):
     assert qs["v-1"]["status"] == "revise_pending"
     assert qs["v-2"]["status"] == "accepted"
 
-    worklist = json.loads((base / "work" / "worklist.json").read_text())
+    worklist = json.loads((base / ".tlddr" / "worklist.json").read_text())
     assert [s["section_id"] for s in worklist["sections"]] == ["s1"]   # revise only
     assert "Re-draft with p.47." in worklist["sections"][0]["guidance"]
 
@@ -88,7 +88,7 @@ def test_repass_log_warns_after_three_cycles(tmp_path, capsys):
     for _ in range(3):
         main(["answer-commit", "--answers", str(answers), "--output", str(base)])
 
-    log = json.loads((base / "work" / "repass_log.json").read_text())
+    log = json.loads((base / ".tlddr" / "repass_log.json").read_text())
     assert log["s1"] == 3
 
     capsys.readouterr()                       # clear
@@ -117,7 +117,7 @@ def test_assemble_silent_once_applied(tmp_path, capsys):
 def test_draft_amend_edits_claim_and_flips_revise(tmp_path):
     from tlddr.cli import main
     import json
-    base = tmp_path / "out"; work = base / "work"; (work / "nodes").mkdir(parents=True)
+    base = tmp_path / "out"; work = base / ".tlddr"; (work / "nodes").mkdir(parents=True)
     (work / "extracted").mkdir()
     from tlddr.models import ExtractedDoc, PageProvenance, SignalType, ExtractMethod
     doc = ExtractedDoc(id="n", source_path="/x", source_sha256="a", signal_type=SignalType.MIXED,
