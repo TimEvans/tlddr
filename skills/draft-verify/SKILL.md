@@ -100,9 +100,16 @@ tlddr draft-eval --output "$TLDDR_OUTPUT"
 
 ## Proving Gate
 
-Stop. Present the raised question count to the user and ask them to decide:
+Honor the run's **interaction style** (read it via `tlddr status` or `tlddr.toml`). This gate
+is **blocking** if the judge raised any contradiction (as opposed to a mere support
+downgrade).
 
-- Accept the raised questions as acknowledged findings (they will appear in `report_comments.md`).
-- Return to the `draft` skill and re-draft specific sections where the judge disagreed.
+- **`guided`, or a blocking gate under any style:** stop and present the raised question
+  count to the Reviewer, who decides:
+  - Accept the raised questions as acknowledged findings (they appear in `report_comments.md`).
+  - Return to the `draft` skill and re-draft specific sections where the judge disagreed.
 
-Do not proceed to assembly (`tlddr assemble`) until the user has reviewed the verify questions and made that call.
+  Do not proceed to assembly (`tlddr assemble`) until the Reviewer has made that call.
+
+- **`autonomous`, non-blocking:** do not stop. The verify questions are recorded and will
+  surface in the end-of-run review queue; continue to assembly.

@@ -61,7 +61,10 @@ config. Read it back in one line and confirm before running.
 Run the stages in order from the resume point (section **C**), honoring the resolved
 **interaction style**: `autonomous` → chain the stages without pausing, surface the review
 queue at the end; `guided` → after each stage, show `tlddr status` and confirm before the
-next.
+next. Each stage's **Proving Gate** honors this: under `autonomous` a non-blocking gate
+defers its findings to the end-of-run queue and continues, while a **blocking/red** gate (a
+blocking open question, or an unsupported claim / contradiction) stops even under
+`autonomous`.
 
 ### 5. Finish
 End on `tlddr status`: rounds and quarantine counts, plus a per-stage token breakdown if

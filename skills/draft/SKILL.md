@@ -145,13 +145,20 @@ Writes `$TLDDR_OUTPUT/report/report.md` (the attributed draft, claims assembled 
 
 ## Proving Gate
 
-Stop. Ask the user to review `$TLDDR_OUTPUT/report/report.md` and `$TLDDR_OUTPUT/report/report_comments.md` and confirm:
+Honor the run's **interaction style** (read it via `tlddr status` or `tlddr.toml`). This gate
+is **blocking** if the groundedness readout shows any unsupported claim or contradiction.
 
-- Every section's claims are faithful to the source evidence.
-- The groundedness readout (support levels, no-evidence sections) is acceptable.
-- Open findings in `report_comments.md` are understood and handled or acknowledged.
+- **`guided`, or a blocking gate under any style:** stop and get the Reviewer's explicit
+  sign-off. Ask them to review `$TLDDR_OUTPUT/report/report.md` and
+  `$TLDDR_OUTPUT/report/report_comments.md` and confirm:
+  - Every section's claims are faithful to the source evidence.
+  - The groundedness readout (support levels, no-evidence sections) is acceptable.
+  - Open findings in `report_comments.md` are understood and handled or acknowledged.
 
-Do not proceed to draft-verify or any downstream stage until the user approves.
+  Do not proceed to draft-verify or any downstream stage until the Reviewer approves.
+
+- **`autonomous`, non-blocking:** do not stop. The findings in `report_comments.md` will
+  surface in the end-of-run review queue; continue to the next stage.
 
 ## Re-pass mode (answer loop)
 
