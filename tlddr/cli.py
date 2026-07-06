@@ -462,13 +462,18 @@ def config_cmd(base: Path, preset: str | None, corpus: str | None, model: str | 
     overrides = {"corpus": corpus, "output": str(base), "model": model,
                  "effort": effort, "interaction": interaction, "benchmark": benchmark}
     cfg = tlddr_config.resolve_config(preset, overrides, toml_cfg)
-    # persist human config (top-level + overrides table for any non-preset axis values)
+    # persist human config: top-level corpus/output/preset, plus an [overrides]
+    # table holding ONLY the axes the user explicitly pinned this invocation
+    # (not the full resolved cfg) -- otherwise every axis gets pinned via the
+    # preset's own values and a later --preset switch would be inert.
+    explicit_overrides = {a: overrides[a] for a in
+                           ("model", "effort", "interaction", "benchmark")
+                           if overrides.get(a) is not None}
     persist = {"corpus": cfg.get("corpus"), "output": cfg.get("output"),
-               "preset": cfg.get("preset"), "overrides": {a: cfg[a] for a in
-               ("model", "effort", "interaction", "benchmark") if a in cfg}}
+               "preset": cfg.get("preset"), "overrides": explicit_overrides}
     tlddr_config.write_toml(paths.config, {k: v for k, v in persist.items() if v is not None})
     fp = runstate.corpus_fingerprint(Path(cfg["corpus"])) if cfg.get("corpus") else ""
-    runstate.init_state(paths.state_lock, cfg, fp)
+    runstate.update_config(paths.state_lock, cfg, fp)
     print("resolved config:")
     for k in ("corpus", "output", "preset", "model", "effort", "interaction", "benchmark"):
         if k in cfg:

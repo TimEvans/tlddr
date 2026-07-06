@@ -64,5 +64,7 @@ show `tlddr status` and confirm before the next.
 
 ## 5. Finish
 
-End on `tlddr status` so the user sees the final per-stage summary (tokens, rounds,
-quarantine). If `assemble` warned about unapplied revises or 3+ cycles, surface it.
+End on `tlddr status` so the user sees the final per-stage summary: rounds and
+quarantine counts, plus a per-stage token breakdown if benchmarking was enabled
+for this run (the launcher does not enable it by default, so tokens are often
+blank). If `assemble` warned about unapplied revises or 3+ cycles, surface it.

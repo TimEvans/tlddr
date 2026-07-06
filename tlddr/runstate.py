@@ -40,6 +40,22 @@ def load_state(state_path: Path) -> dict | None:
     return json.loads(state_path.read_text())
 
 
+def update_config(state_path: Path, config: dict, fingerprint: str) -> dict:
+    """Reconfigure a run's config in place. If there is no existing manifest,
+    or the corpus fingerprint changed (a different corpus is a fresh run),
+    fall back to init_state (which resets every stage to pending). Otherwise
+    update the config block and fingerprint but leave `stages` untouched, so
+    reconfiguring an in-progress run does not wipe recorded progress."""
+    existing = load_state(state_path)
+    if existing is None or existing.get("corpus_fingerprint") != fingerprint:
+        return init_state(state_path, config, fingerprint)
+    existing["config"] = config
+    existing["corpus_fingerprint"] = fingerprint
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(json.dumps(existing, indent=2))
+    return existing
+
+
 def mark_stage(state_path: Path, stage: str, now: str) -> dict:
     state = load_state(state_path) or _blank({}, "")
     entry = state["stages"].setdefault(stage, {"status": "pending", "rounds": 0})

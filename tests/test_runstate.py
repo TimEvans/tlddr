@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from tlddr.runstate import STAGES, corpus_fingerprint, init_state, load_state, mark_stage
+from tlddr.runstate import STAGES, corpus_fingerprint, init_state, load_state, mark_stage, update_config
 
 
 def test_fingerprint_is_stable_and_size_sensitive(tmp_path):
@@ -43,3 +43,30 @@ def test_mark_stage_creates_file_if_missing(tmp_path):
     sp = tmp_path / "state_lock.json"
     st = mark_stage(sp, "extract", now="2026-07-06T00:00:00Z")
     assert sp.exists() and st["stages"]["extract"]["rounds"] == 1
+
+
+def test_update_config_creates_state_when_absent(tmp_path):
+    sp = tmp_path / "state_lock.json"
+    st = update_config(sp, {"preset": "quick"}, "sha256:abc")
+    assert st["config"] == {"preset": "quick"}
+    assert st["corpus_fingerprint"] == "sha256:abc"
+    assert all(st["stages"][s]["status"] == "pending" for s in STAGES)
+
+
+def test_update_config_preserves_stages_when_fingerprint_unchanged(tmp_path):
+    sp = tmp_path / "state_lock.json"
+    init_state(sp, {"preset": "quick"}, "sha256:abc")
+    mark_stage(sp, "extract", now="2026-07-06T00:00:00Z")
+    st = update_config(sp, {"preset": "careful"}, "sha256:abc")
+    assert st["config"] == {"preset": "careful"}
+    assert st["stages"]["extract"]["status"] == "done"
+    assert st["stages"]["extract"]["rounds"] == 1
+
+
+def test_update_config_resets_stages_when_fingerprint_changed(tmp_path):
+    sp = tmp_path / "state_lock.json"
+    init_state(sp, {"preset": "quick"}, "sha256:abc")
+    mark_stage(sp, "extract", now="2026-07-06T00:00:00Z")
+    st = update_config(sp, {"preset": "quick"}, "sha256:different")
+    assert st["stages"]["extract"]["status"] == "pending"
+    assert st["corpus_fingerprint"] == "sha256:different"
