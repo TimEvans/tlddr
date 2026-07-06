@@ -73,7 +73,20 @@ answer that was not signed off.
 
 ### 4. Commit the batch
 
-Accumulate the signed-off records into an answers file and commit them:
+Accumulate the signed-off records into an answers file and commit them. The answers
+file is a JSON **array**; each record is:
+
+```json
+[
+  {"id": "<question id, verbatim from _triage.md>",
+   "disposition": "revise",
+   "answer": "<the signed-off decision text — the revise guidance, or accept rationale>"}
+]
+```
+
+`disposition` is `revise` or `accept`. `id` must match a question id exactly: ids are
+**node-scoped** (e.g. `a12312025ex1022:q-0001`) and rendered in each `_triage.md`
+heading — copy them from there, never hand-mint or abbreviate them. Then:
 
 ```
 tlddr answer-commit --answers <answers.json> --output "$TLDDR_OUTPUT"

@@ -1,3 +1,5 @@
+import pytest
+
 from tlddr.models import Question, Disposition, QuestionStatus
 from tlddr.answer import ingest_answers, build_worklist, parse_triage_answers
 
@@ -28,6 +30,17 @@ def test_valid_answer_sets_status_and_worklist():
     assert dropped == []
     assert updated[0].status is QuestionStatus.REVISE_PENDING
     assert updated[0].answer == "Keep it, cite p.47."
+
+
+def test_colliding_question_ids_raise_rather_than_silently_collapse():
+    """A question set with duplicate ids is corrupt: resolving an answer by bare
+    id would silently drop all but one (the original bug). ingest_answers must
+    fail loud instead of collapsing them."""
+    qs = [_q("q-0001", "understand", node_id="node_a"),
+          _q("q-0001", "understand", node_id="node_b")]
+    records = [{"id": "q-0001", "disposition": "revise", "answer": "x"}]
+    with pytest.raises(ValueError, match="q-0001"):
+        ingest_answers(records, qs)
 
 
 def test_unknown_id_is_dropped():

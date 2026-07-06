@@ -29,7 +29,18 @@ def ingest_answers(records: list[dict],
                    questions: list[Question]) -> tuple[list[Question], dict, list[str]]:
     """Validate answer records against the known question set, resolve matches, and
     build the deduped re-pass worklist from this batch's revise targets."""
-    by_id = {q.id: q for q in questions}
+    # Fail loud on a corrupt question set: duplicate ids would make answer
+    # resolution ambiguous and silently drop all but one match (the original
+    # collision bug). Ids are minted node-scoped-unique upstream, so a duplicate
+    # here signals a genuinely broken store, not normal input.
+    by_id: dict[str, Question] = {}
+    for q in questions:
+        if q.id in by_id:
+            raise ValueError(
+                f"duplicate question id '{q.id}' in the question set "
+                f"(nodes {by_id[q.id].node_id!r} and {q.node_id!r}); "
+                f"answers cannot be resolved unambiguously")
+        by_id[q.id] = q
     dropped: list[str] = []
     revised: list[Question] = []
     for r in records:

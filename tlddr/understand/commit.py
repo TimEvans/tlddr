@@ -20,9 +20,14 @@ def build_node(enrichment: dict, doc: ExtractedDoc,
     valid_sections, dropped_sections = validate_section_tags(
         enrichment.get("report_sections", []), set(known_section_ids))
 
+    # Scope the id to its node so it is globally unique across the run. The agent
+    # numbers each node's questions independently (every node's first is q-0001),
+    # so a bare id collides across nodes and answer-commit would silently collapse
+    # them (docs/bug-question-id-collision-2026-07-06.md). A node-scoped id is
+    # self-disambiguating everywhere it is later matched.
     questions = [
         Question(
-            id=q["id"], raised_by="understand", node_id=doc.id,
+            id=f"{doc.id}:{q['id']}", raised_by="understand", node_id=doc.id,
             section_id=q.get("section_id"), question=q["question"],
             blocking=q.get("blocking", False),
         )
