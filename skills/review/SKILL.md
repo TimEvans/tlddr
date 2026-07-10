@@ -47,7 +47,12 @@ open questions there are.
 
 ### 2. Present ONE question at a time
 
-Do not batch. For each open question:
+Do not batch — not even questions that look like instances of one pattern.
+Superficially similar items can differ materially (a batch of "capped-read exhibits"
+can hide one that is a material related-party transaction, not boilerplate), so decide
+each on its own premise. If you find yourself offering a single shared rationale across
+several questions, confirm each genuinely shares it and break out the exceptions before
+signing off. For each open question:
 
 1. **State the question** clearly and plainly.
 2. **Link the pertinent documents** for retrieval: the `[[node_id]]` of the source(s)

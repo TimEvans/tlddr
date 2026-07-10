@@ -21,7 +21,9 @@ current directory. Then branch on the first token of `$ARGUMENTS`:
 - **no verb (bare `/tlddr`)** → the interactive launcher, section **A**.
 - **`status`** → run `.venv/bin/tlddr status --output <base>`, show it, stop.
 - **`resume`** → run `tlddr status`, then run every stage from the reported `resume point:`
-  through to the end, non-interactively (section **C**).
+  onward (section **C**). The pipeline stages run non-interactively; `review` is inherently
+  interactive, so when a resume reaches (or starts at) `review`, hand off to the interactive
+  answer loop (`skills/review/SKILL.md`) rather than autopiloting through it.
 - **a stage verb** (`extract` / `understand` / `draft` / `verify` / `assemble` / `review`)
   → run just that one stage (section **B**), then stop.
 - **anything else** → run `tlddr status` and list the valid verbs.
@@ -67,9 +69,9 @@ blocking open question, or an unsupported claim / contradiction) stops even unde
 `autonomous`.
 
 ### 5. Finish
-End on `tlddr status`: rounds and quarantine counts, plus a per-stage token breakdown if
-benchmarking was enabled (off by default, so tokens are often blank). Surface any
-`assemble` warning about unapplied revises or 3+ cycles.
+End on `tlddr status`: rounds and quarantine counts, plus a per-stage token breakdown when
+benchmarking was enabled (populated by the per-unit `bench record` calls in the stage
+skills; off by default). Surface any `assemble` warning about unapplied revises or 3+ cycles.
 
 ---
 
@@ -82,7 +84,10 @@ bare `/tlddr` first. Otherwise, do the stage's work from the playbook (section *
 
 ## C. Stage playbook
 
-For each stage, do its work, then `.venv/bin/tlddr mark-stage <stage> --output <base>`:
+For each stage, do its work, then `.venv/bin/tlddr mark-stage <stage> --output <base>`. When
+benchmarking is enabled, also pass `--benchmark "<base>/.tlddr/benchmark"` to the
+deterministic stage commands (`extract`, `draft-eval`, `assemble`) so their duration rows
+land alongside the per-unit token rows the agentic skills record via `bench record`:
 
 - **extract:** `.venv/bin/tlddr extract --source <corpus> --output <base>`
 - **understand:** follow `skills/generate-sections/SKILL.md` if there is no `sections.json`,

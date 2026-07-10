@@ -116,14 +116,27 @@ def test_bench_report_renders_recorded_rows(tmp_path):
 
 
 def test_main_bench_record_and_report(tmp_path, capsys):
-    bench_dir = tmp_path / "b"
-    rc = main(["bench", "record", "--benchmark", str(bench_dir), "--stage", "draft",
+    from tlddr.cli import Paths
+    base = tmp_path / "run"
+    rc = main(["bench", "record", "--output", str(base), "--stage", "draft",
                "--unit", "sec-a", "--kind", "section", "--model", "sonnet",
                "--tokens", "9000", "--tools", "5", "--ms", "30000"])
     assert rc == 0
-    rc = main(["bench", "report", "--benchmark", str(bench_dir)])
+    rc = main(["bench", "report", "--benchmark", str(Paths(base).benchmark)])
     assert rc == 0
     assert "Per-stage summary" in capsys.readouterr().out
+
+
+def test_bench_record_derives_benchmark_dir_from_output_base(tmp_path):
+    base = tmp_path / "run"
+    rc = main(["bench", "record", "--output", str(base), "--stage", "understand",
+               "--unit", "doc1", "--tokens", "500", "--ms", "1200"])
+    assert rc == 0
+    from tlddr import bench
+    from tlddr.cli import Paths
+    rows = bench.load_rows(Paths(base).benchmark)
+    assert len(rows) == 1
+    assert rows[0]["stage"] == "understand" and rows[0]["tokens"] == 500
 
 
 def test_extract_benchmark_flag_records_stage_row(tmp_path, simple_docx):
